@@ -1,0 +1,5 @@
+﻿alpha 0.2 - 20240406
+-fix inventory bug
+
+alpha 0.1 - 20240406
+-first alpha version
