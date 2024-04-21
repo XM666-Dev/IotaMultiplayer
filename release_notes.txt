@@ -1,4 +1,16 @@
-﻿alpha 0.2 - 20240406
+﻿alpha 0.3 - 20240421
+-fix controls delay
+-add player num setting
+-add switch focus binding
+-add teleport binding
+-add player gui icon
+-fix audio
+-fix gui
+-add credits
+-add autoaim
+-add aim binding
+
+alpha 0.2 - 20240406
 -fix inventory bug
 
 alpha 0.1 - 20240406
