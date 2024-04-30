@@ -1,8 +1,9 @@
-dofile("data/scripts/lib/mod_settings.lua")
+dofile_once("mods/iota_multiplayer/lib.lua")
+dofile_once("data/scripts/lib/mod_settings.lua")
 
 local numeric_characters = "0123456789"
 
-local mod_id = "noita_multiplayer"
+local mod_id = MP()
 mod_settings_version = 1
 mod_settings = {
     {
@@ -14,7 +15,6 @@ mod_settings = {
         scope = MOD_SETTING_SCOPE_NEW_GAME
     },
     {
-
     }
 }
 

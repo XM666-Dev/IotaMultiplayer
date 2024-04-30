@@ -1,4 +1,12 @@
-﻿alpha 0.3 - 20240421
+﻿alpha 0.4 - 20240427
+-fix autoaim perk being killed
+-optimize code
+-update credits.txt
+-add suppot for other mods
+-rename mod from NoitaMultiplayer to IotaMultiplayer
+-better autoaim
+
+alpha 0.3 - 20240421
 -fix controls delay
 -add player num setting
 -add switch focus binding

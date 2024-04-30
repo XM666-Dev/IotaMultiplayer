@@ -1,3 +1,11 @@
-(If you want, I can add your name to this file)
-感谢名单：
-弹道凝胶
+Thanks to people who have contributed to IotaMultiplayer!
+
+[Sponsorship Support]
+    弹道凝胶
+    幽狐HOFOX
+
+[Technical Support]
+    Recoilless Interactive
+    Evaisa
+
+And... NollaGames!

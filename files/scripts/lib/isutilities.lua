@@ -1,39 +1,47 @@
 dofile_once("data/scripts/lib/utilities.lua")
 
-function create_dictionary_metatable(entries)
+--#region
+
+function DictionaryMT(entries)
     return {
         __index = function(t, k)
-            local entry = entries[k]
-            if entry then
-                return entry.get()
+            if entries[k] then
+                return entries[k].get()
             end
             return rawget(t, k)
         end,
         __newindex = function(t, k, v)
-            local entry = entries[k]
-            if entry then
-                return entry.set(v)
+            if entries[k] then
+                entries[k].set(v)
+                return
             end
             rawset(t, k, v)
         end
     }
 end
 
-function tag_get_entity(tag)
-    return EntityGetWithTag(tag)[1]
+function ComponentValueEntry(component, field_name)
+    return {
+        get = function()
+            return ComponentGetValue2(component, field_name)
+        end,
+        set = function(...)
+            ComponentSetValue2(component, field_name, ...)
+        end
+    }
 end
 
-function tag_set_entity(tag, entity)
-    local entities = EntityGetWithTag(tag)
-    for _, entity in ipairs(entities) do
-        EntityRemoveTag(entity, tag)
-    end
-    if entity ~= nil then
-        EntityAddTag(entity, tag)
-    end
+function EntityVariableEntry(entity, variable_name, field_name)
+    local component = entity_get_or_add_variable_component(entity, variable_name)
+    return ComponentValueEntry(component, field_name)
 end
 
-function tag_entry_entity(tag)
+function StateVariableEntry(variable_name, field_name)
+    local state = GameGetWorldStateEntity()
+    return EntityVariableEntry(state, variable_name, field_name)
+end
+
+function TagEntityEntry(tag)
     return {
         get = function()
             return tag_get_entity(tag)
@@ -44,109 +52,94 @@ function tag_entry_entity(tag)
     }
 end
 
-String = "value_string"
-Int = "value_int"
-Bool = "value_bool"
-Float = "value_float"
-
-function var_get(entity, name, field)
-    local comp = get_variable_storage_component(entity, name)
-    if comp then
-        return ComponentGetValue2(comp, field)
-    end
-end
-
-function var_set(entity, name, field, value)
-    local comp = get_variable_storage_component(entity, name)
-    if comp then
-        return ComponentSetValue2(comp, field, value)
-    end
-    EntityAddComponent2(entity, "VariableStorageComponent", { name = name, [field] = value })
-end
-
-function var_entry(entity, name, field)
-    return {
-        get = function()
-            return var_get(entity, name, field)
+function ComponentData(component)
+    local t = {}
+    setmetatable(t, {
+        __index = function(_, k)
+            return ComponentGetValue2(component, k)
         end,
-        set = function(v)
-            var_set(entity, name, field, v)
-        end
-    }
-end
-
-function global_get(name, field)
-    local state = GameGetWorldStateEntity()
-    return var_get(state, name, field)
-end
-
-function global_set(name, field, value)
-    local state = GameGetWorldStateEntity()
-    var_set(state, name, field, value)
-end
-
-function global_entry(name, field)
-    return {
-        get = function()
-            return global_get(name, field)
+        __newindex = function(_, k, v)
+            ComponentSetValue2(component, k, v)
         end,
-        set = function(v)
-            global_set(name, field, v)
+        __call = function(_, k)
+            return ComponentValueEntry(component, k)
+        end,
+        __len = function()
+            return component
         end
-    }
+    })
+    return t
 end
 
-function namespace(name)
+function Namespace(name)
     local t = {}
     setmetatable(t, {
         __index = function(_, k)
             return name .. "." .. k
         end,
-        __tostring = function(_)
+        __call = function()
             return name
         end
     })
     return t
 end
 
-function create_component_table(comp)
-    local t = {}
-    setmetatable(t, {
-        __index = function(_, k)
-            return ComponentGetValue2(comp, k)
-        end,
-        __newindex = function(_, k, v)
-            ComponentSetValue2(comp, k, v)
-        end,
-        __call = function(_, k)
-            return {
-                get = function()
-                    return ComponentGetValue2(comp, k)
-                end,
-                set = function(...)
-                    ComponentSetValue2(comp, k, ...)
-                end
-            }
-        end
-    })
-    return t
+--#endregion
+
+String = "value_string"
+Int = "value_int"
+Bool = "value_bool"
+Float = "value_float"
+
+function entity_get_or_add_variable_component(entity, variable_name)
+    return get_variable_storage_component(entity, variable_name) or
+        EntityAddComponent2(entity, "VariableStorageComponent", { name = variable_name })
 end
 
-function has_flag_run_once(flag)
-    if global_get(flag, Bool) then
-        return true
-    end
-    global_set(flag, Bool, true)
-    return false
+function entity_get_variable(entity, variable_name, field_name)
+    local component = entity_get_or_add_variable_component(entity, variable_name)
+    return ComponentGetValue2(component, field_name)
+end
+
+function entity_set_variable(entity, variable_name, field_name, value)
+    local component = entity_get_or_add_variable_component(entity, variable_name)
+    ComponentSetValue2(component, field_name, value)
+end
+
+function state_get_variable(variable_name, field_name)
+    local state = GameGetWorldStateEntity()
+    return entity_get_variable(state, variable_name, field_name)
+end
+
+function state_set_variable(variable_name, field_name, value)
+    local state = GameGetWorldStateEntity()
+    entity_set_variable(state, variable_name, field_name, value)
+end
+
+function tag_get_entity(tag)
+    return EntityGetWithTag(tag)[1]
+end
+
+function tag_set_entity(tag, entity)
+    EntityRemoveTag(tag_get_entity(tag), tag)
+    EntityAddTag(entity, tag)
 end
 
 function entity_get_children(entity)
     return EntityGetAllChildren(entity) or {}
 end
 
-function printv(...)
+function has_flag_run_once(flag)
+    if state_get_variable(flag, Bool) then
+        return true
+    end
+    state_set_variable(flag, Bool, true)
+    return false
+end
+
+function print_table(t)
     local str = ""
-    for _, v in ipairs({ ... }) do
+    for _, v in ipairs(t) do
         str = str .. tostring(v)
     end
     GamePrint(str)

@@ -1,8 +1,6 @@
-dofile_once("mods/noita_multiplayer/files/scripts/lib/isutilities.lua")
+dofile_once("mods/iota_multiplayer/lib.lua")
 
-MP = namespace("noita_multiplayer")
-
-bindings[tostring(MP)] = {
+bindings[MP()] = {
     switch_focus = {
         order_id = "a",
         name = "Switch Focus（切换焦点）",
@@ -151,6 +149,6 @@ for i = 2, tonumber(ModSettingGet(MP.player_num)) do
             name = "$controls_itemslot8",
             desc = "$controls_itemslot8",
             keys = {}
-        },
+        }
     }
 end
