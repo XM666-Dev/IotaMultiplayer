@@ -3,7 +3,7 @@ dofile_once("data/scripts/lib/mod_settings.lua")
 
 local numeric_characters = "0123456789"
 
-local mod_id = MP()
+local mod_id = get_id(MULTIPLAYER)
 mod_settings_version = 1
 mod_settings = {
     {

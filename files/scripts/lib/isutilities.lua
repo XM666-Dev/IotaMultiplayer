@@ -2,7 +2,7 @@ dofile_once("data/scripts/lib/utilities.lua")
 
 --#region
 
-function DictionaryMT(entries)
+function DictionaryMetatable(entries)
     return {
         __index = function(t, k)
             if entries[k] then
@@ -20,40 +20,35 @@ function DictionaryMT(entries)
     }
 end
 
-function ComponentValueEntry(component, field_name)
+function ComponentValueEntry(component, field)
     return {
         get = function()
-            return ComponentGetValue2(component, field_name)
+            return ComponentGetValue2(component, field)
         end,
         set = function(...)
-            ComponentSetValue2(component, field_name, ...)
+            ComponentSetValue2(component, field, ...)
         end
     }
 end
 
-function EntityVariableEntry(entity, variable_name, field_name)
-    local component = entity_get_or_add_variable_component(entity, variable_name)
-    return ComponentValueEntry(component, field_name)
-end
-
-function StateVariableEntry(variable_name, field_name)
-    local state = GameGetWorldStateEntity()
-    return EntityVariableEntry(state, variable_name, field_name)
+function EntityVariableEntry(entity, variable, field)
+    local component = get_variable_storage_component_or_add(entity, variable)
+    return ComponentValueEntry(component, field)
 end
 
 function TagEntityEntry(tag)
     return {
         get = function()
-            return tag_get_entity(tag)
+            return get_tag_entity(tag)
         end,
         set = function(v)
-            tag_set_entity(tag, v)
+            set_tag_entity(tag, v)
         end
     }
 end
 
 function ComponentData(component)
-    local t = {}
+    local t = { id = component }
     setmetatable(t, {
         __index = function(_, k)
             return ComponentGetValue2(component, k)
@@ -63,22 +58,19 @@ function ComponentData(component)
         end,
         __call = function(_, k)
             return ComponentValueEntry(component, k)
-        end,
-        __len = function()
-            return component
         end
     })
     return t
 end
 
-function Namespace(name)
-    local t = {}
+function ModIDData(mod_id)
+    local t = { id = mod_id }
     setmetatable(t, {
         __index = function(_, k)
-            return name .. "." .. k
+            return mod_id .. "." .. k
         end,
-        __call = function()
-            return name
+        __concat = function(_, s)
+            return mod_id .. s
         end
     })
     return t
@@ -86,84 +78,80 @@ end
 
 --#endregion
 
-String = "value_string"
-Int = "value_int"
-Bool = "value_bool"
-Float = "value_float"
+STRING = "value_string"
+INT = "value_int"
+BOOL = "value_bool"
+FLOAT = "value_float"
 
-function entity_get_or_add_variable_component(entity, variable_name)
-    return get_variable_storage_component(entity, variable_name) or
-        EntityAddComponent2(entity, "VariableStorageComponent", { name = variable_name })
+function get_variable_storage_component_or_add(entity, variable)
+    return get_variable_storage_component(entity, variable) or EntityAddComponent2(entity, "VariableStorageComponent", { name = variable })
 end
 
-function entity_get_variable(entity, variable_name, field_name)
-    local component = entity_get_or_add_variable_component(entity, variable_name)
-    return ComponentGetValue2(component, field_name)
-end
-
-function entity_set_variable(entity, variable_name, field_name, value)
-    local component = entity_get_or_add_variable_component(entity, variable_name)
-    ComponentSetValue2(component, field_name, value)
-end
-
-function state_get_variable(variable_name, field_name)
-    local state = GameGetWorldStateEntity()
-    return entity_get_variable(state, variable_name, field_name)
-end
-
-function state_set_variable(variable_name, field_name, value)
-    local state = GameGetWorldStateEntity()
-    entity_set_variable(state, variable_name, field_name, value)
-end
-
-function tag_get_entity(tag)
+function get_tag_entity(tag)
     return EntityGetWithTag(tag)[1]
 end
 
-function tag_set_entity(tag, entity)
-    EntityRemoveTag(tag_get_entity(tag), tag)
+function set_tag_entity(tag, entity)
+    EntityRemoveTag(get_tag_entity(tag), tag)
     EntityAddTag(entity, tag)
 end
 
-function entity_get_children(entity)
+function get_id(t)
+    return rawget(t, "id")
+end
+
+function get_children(entity)
     return EntityGetAllChildren(entity) or {}
 end
 
-function has_flag_run_once(flag)
-    if state_get_variable(flag, Bool) then
-        return true
-    end
-    state_set_variable(flag, Bool, true)
-    return false
+function has_globals_value_or_set(key, value)
+    return GlobalsGetValue(key) ~= "" or GlobalsSetValue(key, value)
+end
+
+function get_camera_top_left()
+    local camera_x, camera_y = GameGetCameraPos()
+    local _, _, w, h = GameGetCameraBounds()
+    return camera_x - w / 2, camera_y - h / 2
+end
+
+function get_camera_zoom(gui)
+    local _, _, camera_w, camera_h = GameGetCameraBounds()
+    local screen_w, screen_h = GuiGetScreenDimensions(gui)
+    return screen_w / camera_w, screen_h / camera_h
+end
+
+function set_translations(filename)
+    local common = "data/translations/common.csv"
+    ModTextFileSetContent(common, ModTextFileGetContent(common) .. ModTextFileGetContent(filename))
 end
 
 function print_table(t)
-    local str = ""
+    local s = ""
     for _, v in ipairs(t) do
-        str = str .. tostring(v)
+        s = s .. tostring(v)
     end
-    GamePrint(str)
+    GamePrint(s)
 end
 
-function table_find(list, f)
-    for _, v in ipairs(list) do
-        if f(v) then
-            return v
+function table.find(list, pred)
+    for i, v in ipairs(list) do
+        if pred(v) then
+            return i
         end
     end
 end
 
-function table_filter(list, f)
-    local t = {}
+function table.filter(list, pred)
+    local result = {}
     for _, v in ipairs(list) do
-        if f(v) then
-            table.insert(t, v)
+        if pred(v) then
+            table.insert(result, v)
         end
     end
-    return t
+    return result
 end
 
-function table_iterate(list, comp, value)
+function table.iterate(list, comp, value)
     for _, v in ipairs(list) do
         if comp(v, value) then
             value = v

@@ -1,4 +1,18 @@
-﻿alpha 0.4 - 20240427
+﻿alpha0.4.2 #20240501
+-fix gui/camera offset
+-add better inventory switching
+-fix inventory/camera
+-add both gamepad/mouse gui controls
+-fix gui-ignored input
+-add translation
+-add money/temple_heart/spell_refresher sharing
+-add mouse aiming
+-optimize code
+
+alpha0.4.1 #20240430
+-improve aiming
+
+alpha0.4 #20240427
 -fix autoaim perk being killed
 -optimize code
 -update credits.txt
@@ -6,7 +20,7 @@
 -rename mod from NoitaMultiplayer to IotaMultiplayer
 -better autoaim
 
-alpha 0.3 - 20240421
+alpha0.3 #20240421
 -fix controls delay
 -add player num setting
 -add switch focus binding
@@ -18,8 +32,8 @@ alpha 0.3 - 20240421
 -add autoaim
 -add aim binding
 
-alpha 0.2 - 20240406
+alpha0.2 #20240406
 -fix inventory bug
 
-alpha 0.1 - 20240406
+alpha0.1 #20240406
 -first alpha version
