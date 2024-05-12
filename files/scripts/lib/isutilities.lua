@@ -108,7 +108,7 @@ function has_globals_value_or_set(key, value)
     return GlobalsGetValue(key) ~= "" or GlobalsSetValue(key, value)
 end
 
-function get_camera_top_left()
+function get_camera_corner()
     local camera_x, camera_y = GameGetCameraPos()
     local _, _, w, h = GameGetCameraBounds()
     return camera_x - w / 2, camera_y - h / 2
@@ -118,6 +118,16 @@ function get_camera_zoom(gui)
     local _, _, camera_w, camera_h = GameGetCameraBounds()
     local screen_w, screen_h = GuiGetScreenDimensions(gui)
     return screen_w / camera_w, screen_h / camera_h
+end
+
+function get_gui_pos_from_world(gui, x, y)
+    local camera_x, camera_y = get_camera_corner()
+    local zoom_x, zoom_y = get_camera_zoom(gui)
+    return (x - camera_x) * zoom_x, (y - camera_y) * zoom_y
+end
+
+function get_frame_num_next()
+    return GameGetFrameNum() + 1
 end
 
 function set_translations(filename)

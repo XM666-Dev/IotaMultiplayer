@@ -20,16 +20,13 @@ bindings[get_id(MULTIPLAYER)] = {
     }
 }
 
-function get_player_binding_description(param)
-    return GameTextGet("$iota_multiplayer.bindingdesc_player", GameTextGet(param))
-end
 
 for i = 1, 8 do
     local id = i - 1
-    function get_key(a, b)
-        return id < 1 and a or b
+    local jpad = i > 1 and i < 6
+    local function get_player_binding_description(param)
+        return GameTextGet("$iota_multiplayer.bindingdesc_player", tostring(i), GameTextGet(param))
     end
-
     mneedata[MULTIPLAYER .. i] = {
         name = "P" .. i,
         desc = function()
@@ -43,118 +40,130 @@ for i = 1, 8 do
     bindings[MULTIPLAYER .. i] = {
         up = {
             order_id = "a",
+            jpad_type = "MOTION",
+            deadzone = 0.0,
             name = "$controls_up",
             desc = function()
                 return get_player_binding_description("$controls_up")
             end,
-            keys = { [get_key("w", id .. "gpd_l2")] = 1 },
-            keys_alt = { [get_key("space", "_")] = 1 }
+            keys = { [jpad and id .. "gpd_l2" or "w"] = 1 },
+            keys_alt = { [jpad and "_" or "space"] = 1 }
         },
         down = {
             order_id = "b",
+            jpad_type = "MOTION",
+            deadzone = 0.9,
             name = "$controls_down",
             desc = function()
                 return get_player_binding_description("$controls_down")
             end,
-            keys = { [get_key("s", id .. "gpd_btn_lv_+")] = 1 }
+            keys = { [jpad and id .. "gpd_btn_lv_+" or "s"] = 1 }
         },
         left = {
             order_id = "c",
+            jpad_type = "MOTION",
+            deadzone = 0.5,
             name = "$controls_left",
             desc = function()
                 return get_player_binding_description("$controls_left")
             end,
-            keys = { [get_key("a", id .. "gpd_btn_lh_-")] = 1 }
+            keys = { [jpad and id .. "gpd_btn_lh_-" or "a"] = 1 }
         },
         right = {
             order_id = "d",
+            jpad_type = "MOTION",
+            deadzone = 0.5,
             name = "$controls_right",
             desc = function()
                 return get_player_binding_description("$controls_right")
             end,
-            keys = { [get_key("d", id .. "gpd_btn_lh_+")] = 1 }
+            keys = { [jpad and id .. "gpd_btn_lh_+" or "d"] = 1 }
         },
         aimv = {
-            order_id = "e",
-            name = "$iota_multiplayer.binding_aimv",
-            desc = function()
-                return GameTextGet("$iota_multiplayer.bindingdesc_aim", GameTextGet("$iota_multiplayer.binding_aimv"))
-            end,
-            keys = { "is_axis", get_key("_", id .. "gpd_axis_rv") }
+            is_hidden = true,
+            keys = { "is_axis", jpad and id .. "gpd_axis_rv" or "_" }
         },
         aimh = {
-            order_id = "f",
-            name = "$iota_multiplayer.binding_aimh",
+            is_hidden = true,
+            keys = { "is_axis", jpad and id .. "gpd_axis_rh" or "_" }
+        },
+        aim = {
+            order_id = "e",
+            jpad_type = "AIM",
+            deadzone = 0.15,
+            name = "$controls_aim_stick",
             desc = function()
-                return GameTextGet("$iota_multiplayer.bindingdesc_aim", GameTextGet("$iota_multiplayer.binding_aimh"))
+                return GameTextGet("$iota_multiplayer.bindingdesc_aim", tostring(i), GameTextGet("$controls_aim_stick"))
             end,
-            keys = { "is_axis", get_key("_", id .. "gpd_axis_rh") }
+            axes = { "aimh", "aimv" },
         },
         usewand = {
-            order_id = "g",
+            order_id = "f",
+            deadzone = 0.25,
             name = "$controls_usewand",
             desc = function()
                 return get_player_binding_description("$controls_usewand")
             end,
-            keys = { [get_key("mouse_left", id .. "gpd_r2")] = 1 }
+            keys = { [jpad and id .. "gpd_r2" or "mouse_left"] = 1 }
         },
         sprayflask = {
-            order_id = "h",
+            order_id = "g",
+            deadzone = 0.25,
             name = "$controls_sprayflask",
             desc = function()
                 return get_player_binding_description("$controls_sprayflask")
             end,
-            keys = { [get_key("mouse_left", id .. "gpd_r2")] = 1 }
+            keys = { [jpad and id .. "gpd_r2" or "mouse_left"] = 1 }
         },
         throw = {
-            order_id = "i",
+            order_id = "h",
             name = "$controls_throw",
             desc = function()
                 return get_player_binding_description("$controls_throw")
             end,
-            keys = { [get_key("mouse_right", id .. "gpd_y")] = 1 }
+            keys = { [jpad and id .. "gpd_y" or "mouse_right"] = 1 }
         },
         kick = {
-            order_id = "j",
+            order_id = "i",
             name = "$controls_kick",
             desc = function()
                 return get_player_binding_description("$controls_kick")
             end,
-            keys = { [get_key("f", id .. "gpd_b")] = 1 },
-            keys_alt = { [get_key("_", id .. "gpd_l3")] = 1 }
+            keys = { [jpad and id .. "gpd_b" or "f"] = 1 },
+            keys_alt = { [jpad and id .. "gpd_l3" or "_"] = 1 }
         },
         inventory = {
-            order_id = "k",
+            order_id = "j",
             name = "$controls_inventory",
             desc = function()
                 return get_player_binding_description("$controls_inventory")
             end,
-            keys = { [get_key("i", id .. "gpd_select")] = 1 },
-            keys_alt = { [get_key("tab", "_")] = 1 }
+            keys = { [jpad and id .. "gpd_select" or "i"] = 1 },
+            keys_alt = { [jpad and "_" or "tab"] = 1 }
         },
         interact = {
-            order_id = "l",
+            order_id = "k",
             name = "$controls_use",
             desc = function()
                 return get_player_binding_description("$controls_use")
             end,
-            keys = { [get_key("e", id .. "gpd_a")] = 1 }
+            keys = { [jpad and id .. "gpd_a" or "e"] = 1 }
         },
         itemnext = {
-            order_id = "m",
+            order_id = "l",
             name = "$controls_itemnext",
             desc = function()
                 return get_player_binding_description("$controls_itemnext")
             end,
-            keys = { [get_key("mouse_wheel_down", id .. "gpd_r1")] = 1 }
+            keys = { [jpad and id .. "gpd_r1" or "mouse_wheel_down"] = 1 }
         },
         itemprev = {
-            order_id = "n",
+            order_id = "m",
             name = "$controls_itemprev",
             desc = function()
                 return get_player_binding_description("$controls_itemprev")
             end,
-            keys = { [get_key("mouse_wheel_up", id .. "gpd_l1")] = 1 }
+            keys = { [jpad and id .. "gpd_l1" or "mouse_wheel_up"] = 1 }
         }
     }
 end

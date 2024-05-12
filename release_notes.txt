@@ -1,4 +1,11 @@
-﻿alpha0.4.2 #20240501
+﻿alpha0.5 #20240512
+-fix some controls bug
+-add deadzone
+-improve aim binding
+-add smooth camera
+-fix icon delay
+
+alpha0.4.2 #20240501
 -fix gui/camera offset
 -add better inventory switching
 -fix inventory/camera

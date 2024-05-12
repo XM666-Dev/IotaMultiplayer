@@ -1,0 +1,5 @@
+ControlsComponent
+    mAimingVector -controls usewand
+    mAimingVectorNormalized -controls throw
+    mMousePosition -controls look
+    mMousePositionRaw -controls camera

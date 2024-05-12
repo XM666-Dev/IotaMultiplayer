@@ -15,7 +15,7 @@ end
 
 function PlayerData(player)
     if not player then
-        return
+        return {}
     end
     local controls_component = EntityGetFirstComponentIncludingDisabled(player, "ControlsComponent")
     local shooter_component = EntityGetFirstComponentIncludingDisabled(player, "PlatformShooterPlayerComponent")
@@ -28,14 +28,14 @@ function PlayerData(player)
         listener = ComponentData(listener_component),
         gui = ComponentData(gui_component),
         wallet = ComponentData(wallet_component),
-        is_binding_down = function(self, name, dirty_mode, pressed_mode, is_vip, loose_mode, is_guiless, key_mode)
-            return is_binding_down(MULTIPLAYER .. self.user, name, dirty_mode, pressed_mode, is_vip, loose_mode, is_guiless, key_mode)
+        mnin_bind = function(self, name, dirty_mode, pressed_mode, is_vip, loose_mode, key_mode)
+            return mnee.mnin_bind(MULTIPLAYER .. self.user, name, dirty_mode, pressed_mode, is_vip, loose_mode, key_mode)
         end,
-        get_binding_pressed = function(self, name, is_vip, dirty_mode, loose_mode, is_guiless)
-            return get_binding_pressed(MULTIPLAYER .. self.user, name, is_vip, dirty_mode, loose_mode, is_guiless)
+        mnin_axis = function(self, name, dirty_mode, pressed_mode, is_vip, key_mode)
+            return mnee.mnin_axis(MULTIPLAYER .. self.user, name, dirty_mode, pressed_mode, is_vip, key_mode)
         end,
-        get_axis_state = function(self, name, dirty_mode, pressed_mode, is_vip, is_guiless, key_mode)
-            return get_axis_state(MULTIPLAYER .. self.user, name, dirty_mode, pressed_mode, is_vip, is_guiless, key_mode)
+        mnin_stick = function(self, name, dirty_mode, pressed_mode, is_vip, key_mode)
+            return mnee.mnin_stick(MULTIPLAYER .. self.user, name, dirty_mode, pressed_mode, is_vip, key_mode)
         end
     }
     setmetatable(t, DictionaryMetatable {
