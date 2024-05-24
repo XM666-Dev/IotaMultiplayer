@@ -1,4 +1,4 @@
-dofile_once("mods/iota_multiplayer/files/scripts/lib/isutilities.lua")
+dofile_once("mods/iota_multiplayer/files/scripts/lib/is.lua")
 dofile_once("mods/mnee/lib.lua")
 
 MULTIPLAYER = ModIDData("iota_multiplayer")
@@ -6,10 +6,13 @@ MULTIPLAYER = ModIDData("iota_multiplayer")
 function set_dictionary_metatable()
     local world_state = GameGetWorldStateEntity()
     setmetatable(_G, DictionaryMetatable {
-        spawned_player = TagEntityEntry(MULTIPLAYER.spawned_player),
+        primary_player = TagEntityEntry(MULTIPLAYER.primary_player),
         gui_enabled_player = TagEntityEntry(MULTIPLAYER.gui_enabled_player),
+        previous_gui_enabled_player = TagEntityEntry(MULTIPLAYER.previous_gui_enabled_player),
         camera_centered_player = TagEntityEntry(MULTIPLAYER.camera_centered_player),
-        max_user = EntityVariableEntry(world_state, MULTIPLAYER.max_user, INT)
+        previous_camera_centered_player = TagEntityEntry(MULTIPLAYER.previous_camera_centered_player),
+        max_user = EntityVariableEntry(world_state, MULTIPLAYER.max_user, INT),
+        money = EntityVariableEntry(world_state, MULTIPLAYER.money, INT)
     })
 end
 
@@ -17,17 +20,16 @@ function PlayerData(player)
     if not player then
         return {}
     end
-    local controls_component = EntityGetFirstComponentIncludingDisabled(player, "ControlsComponent")
-    local shooter_component = EntityGetFirstComponentIncludingDisabled(player, "PlatformShooterPlayerComponent")
-    local listener_component = EntityGetFirstComponentIncludingDisabled(player, "AudioListenerComponent")
-    local gui_component = EntityGetFirstComponentIncludingDisabled(player, "InventoryGuiComponent")
-    local wallet_component = EntityGetFirstComponentIncludingDisabled(player, "WalletComponent")
     local t = {
-        controls = ComponentData(controls_component),
-        shooter = ComponentData(shooter_component),
-        listener = ComponentData(listener_component),
-        gui = ComponentData(gui_component),
-        wallet = ComponentData(wallet_component),
+        controls = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "ControlsComponent")),
+        shooter = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "PlatformShooterPlayerComponent")),
+        listener = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "AudioListenerComponent")),
+        gui = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "InventoryGuiComponent")),
+        wallet = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "WalletComponent")),
+        pickupper = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "ItemPickUpperComponent")),
+        inventory_open = function(self)
+            return self.gui and self.gui.mActive
+        end,
         mnin_bind = function(self, name, dirty_mode, pressed_mode, is_vip, loose_mode, key_mode)
             return mnee.mnin_bind(MULTIPLAYER .. self.user, name, dirty_mode, pressed_mode, is_vip, loose_mode, key_mode)
         end,
@@ -39,8 +41,7 @@ function PlayerData(player)
         end
     }
     setmetatable(t, DictionaryMetatable {
-        user = EntityVariableEntry(player, MULTIPLAYER.user, INT),
-        previous_money = EntityVariableEntry(player, MULTIPLAYER.previous_money, INT)
+        user = EntityVariableEntry(player, MULTIPLAYER.user, INT)
     })
     return t
 end
@@ -59,18 +60,6 @@ end
 
 function get_players()
     return EntityGetWithTag(MULTIPLAYER.player)
-end
-
-function set_gui_enabled(player, enabled)
-    local player_data = PlayerData(player)
-    local gui_component = get_id(player_data.gui)
-    if enabled then
-        EntitySetComponentIsEnabled(player, gui_component, true)
-    elseif ComponentGetIsEnabled(gui_component) then
-        EntityRemoveComponent(player, gui_component)
-        local component = EntityAddComponent2(player, "InventoryGuiComponent")
-        EntitySetComponentIsEnabled(player, component, false)
-    end
 end
 
 function perk_spawn_with_data(x, y, perk_data, script_item_picked_up)
@@ -111,22 +100,4 @@ function teleport(entity, from_x, from_y, to_x, to_y)
     EntityLoad("data/entities/particles/teleportation_source.xml", from_x, from_y)
     EntityLoad("data/entities/particles/teleportation_target.xml", to_x, to_y)
     GamePlaySound("data/audio/Desktop/misc.bank", "misc/teleport_use", to_x, to_y)
-end
-
-function is_mouse_down_filter(name, pressed_mode)
-    if not entity then
-        entity = EntityCreateNew()
-    end
-    local controls = EntityGetFirstComponent(entity, "ControlsComponent") or EntityAddComponent2(entity, "ControlsComponent")
-    if name == "mouse_left" then
-        if pressed_mode then
-            return ComponentGetValue2(controls, "mButtonFrameLeftClick") == GameGetFrameNum()
-        end
-        return ComponentGetValue2(controls, "mButtonDownLeftClick")
-    elseif name == "mouse_right" then
-        if pressed_mode then
-            return ComponentGetValue2(controls, "mButtonFrameRightClick") == GameGetFrameNum()
-        end
-        return ComponentGetValue2(controls, "mButtonDownRightClick")
-    end
 end

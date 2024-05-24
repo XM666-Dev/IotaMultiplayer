@@ -5,15 +5,15 @@ dofile_once("data/scripts/lib/utilities.lua")
 function DictionaryMetatable(entries)
     return {
         __index = function(t, k)
-            if entries[k] then
-                return entries[k].get()
+            local entry = entries[k]
+            if entry then
+                return entry.get()
             end
-            return rawget(t, k)
         end,
         __newindex = function(t, k, v)
-            if entries[k] then
-                entries[k].set(v)
-                return
+            local entry = entries[k]
+            if entry then
+                return entry.set(v)
             end
             rawset(t, k, v)
         end
@@ -60,7 +60,7 @@ function ComponentData(component)
             return ComponentValueEntry(component, k)
         end
     })
-    return t
+    return component and t
 end
 
 function ModIDData(mod_id)
@@ -92,7 +92,9 @@ function get_tag_entity(tag)
 end
 
 function set_tag_entity(tag, entity)
-    EntityRemoveTag(get_tag_entity(tag), tag)
+    for _, tagged_entity in ipairs(EntityGetWithTag(tag)) do
+        EntityRemoveTag(tagged_entity, tag)
+    end
     EntityAddTag(entity, tag)
 end
 
@@ -104,8 +106,8 @@ function get_children(entity)
     return EntityGetAllChildren(entity) or {}
 end
 
-function has_globals_value_or_set(key, value)
-    return GlobalsGetValue(key) ~= "" or GlobalsSetValue(key, value)
+function has_globals_value_or_set(key)
+    return GlobalsGetValue(key) ~= "" or GlobalsSetValue(key, "yes")
 end
 
 function get_camera_corner()
@@ -120,7 +122,7 @@ function get_camera_zoom(gui)
     return screen_w / camera_w, screen_h / camera_h
 end
 
-function get_gui_pos_from_world(gui, x, y)
+function get_pos_from_world(gui, x, y)
     local camera_x, camera_y = get_camera_corner()
     local zoom_x, zoom_y = get_camera_zoom(gui)
     return (x - camera_x) * zoom_x, (y - camera_y) * zoom_y
@@ -130,7 +132,7 @@ function get_frame_num_next()
     return GameGetFrameNum() + 1
 end
 
-function set_translations(filename)
+function append_translations(filename)
     local common = "data/translations/common.csv"
     ModTextFileSetContent(common, ModTextFileGetContent(common) .. ModTextFileGetContent(filename))
 end
@@ -168,4 +170,32 @@ function table.iterate(list, comp, value)
         end
     end
     return value
+end
+
+NUMERIC_CHARACTERS = "0123456789"
+
+function Setting(setting, functions)
+    setmetatable(setting, {
+        __index = function(_, k)
+            local f = functions[k]
+            return f and f()
+        end
+    })
+    return setting
+end
+
+function get_language()
+    return ({
+        ["English"] = "en",
+        ["русский"] = "ru",
+        ["Português (Brasil)"] = "pt-br",
+        ["Español"] = "es-es",
+        ["Deutsch"] = "de",
+        ["Français"] = "fr-fr",
+        ["Italiano"] = "it",
+        ["Polska"] = "pl",
+        ["简体中文"] = "zh-cn",
+        ["日本語"] = "jp",
+        ["한국어"] = "ko",
+    })[GameTextGet("$current_language")]
 end

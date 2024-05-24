@@ -1,4 +1,14 @@
-﻿alpha0.5 #20240512
+﻿alpha0.5.1 #20240524
+-fix camera
+-better wallet
+-add more check nil
+-fix jpad can not drop item
+-fix some jpad binding
+-add better share
+-add perk respawn
+-add kick immunity
+
+alpha0.5 #20240512
 -fix some controls bug
 -add deadzone
 -improve aim binding
