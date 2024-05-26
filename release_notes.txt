@@ -1,4 +1,13 @@
-﻿alpha0.5.1 #20240524
+﻿alpha0.5.2 #20240526
+-add more friendly_fire settings
+-better compatibility
+-improve sharing
+-better perk share compatibility
+-better check nil
+-fix autoaim not work
+-fix player num setting
+
+alpha0.5.1 #20240524
 -fix camera
 -better wallet
 -add more check nil

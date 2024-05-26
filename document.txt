@@ -3,3 +3,5 @@ ControlsComponent
     mAimingVectorNormalized -controls throw
     mMousePosition -controls look
     mMousePositionRaw -controls camera
+LuaComponent
+    script_kick -when e1 kick e2, call e1.kick(e1) first, then call e2.kick(e1)

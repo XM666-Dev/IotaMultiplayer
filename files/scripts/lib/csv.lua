@@ -1,7 +1,7 @@
 ---解析器
 
 ---@param str string
-function ParseCSV(str)
+local function ParseCSV(str)
     local cellDatas = {}
     local rowHeads = {}
     local cellArrangement = {}

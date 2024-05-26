@@ -1,6 +1,7 @@
-dofile_once("mods/iota_multiplayer/lib.lua")
+local lib = dofile_once("mods/iota_multiplayer/lib.lua")
+local MOD = lib.MOD
 
-function perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
+local function new_perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
     -- fetch perk info ---------------------------------------------------
 
     local no_perk_entity = no_perk_entity_ or false
@@ -152,10 +153,10 @@ function perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, 
         disable_reroll = true
     end
 
-    set_dictionary_metatable() --append
-    local perk_stats = EntityGetClosestWithTag(pos_x, pos_y, MULTIPLAYER.perk_stats)
-    local respawn = ModSettingGet(MULTIPLAYER.temple_perk_respawn) and perk_stats > 0
-    local respawn_count = respawn and EntityVariableEntry(perk_stats, MULTIPLAYER.respawn_count, INT)
+    local accessor = lib.ModAccessor() --append
+    local perk_stats = EntityGetClosestWithTag(pos_x, pos_y, MOD.perk_stats)
+    local respawn = ModSettingGet(MOD.share_temple_perk) and lib.is_vaild(perk_stats)
+    local respawn_count = respawn and lib.EntityVariableAccess(perk_stats, MOD.respawn_count, INT)
 
     -- remove all perk items (also this one!) ----------------------------
     if kill_other_perks then
@@ -177,13 +178,14 @@ function perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, 
         end
     end
 
-    if respawn and respawn_count.get() < max_user - 1 then --append
+    if respawn and respawn_count.get() < accessor.max_user - 1 then --append
         if disable_reroll then
-            for _, perk_respawn in ipairs(EntityGetWithTag(MULTIPLAYER.perk_respawn)) do
-                EntityAddTag(perk_respawn, "perk")
-            end
-            perk_reroll_perks(rerolls[1])
             respawn_count.set(respawn_count.get() + 1)
+            local x, y = EntityGetTransform(perk_stats)
+            perk_spawn_many(x - 30, y)
+            for _, perk in ipairs(EntityGetInRadiusWithTag(x, y, 30, "perk")) do
+                EntityAddTag(perk, MOD.temple_perk)
+            end
         else
             EntityLoad("mods/iota_multiplayer/files/entities/buildings/perk_respawn.xml", pos_x, pos_y)
         end
@@ -210,4 +212,12 @@ function perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, 
     if (no_perk_entity == false) then
         EntityKill(entity_item) -- entity item should always be killed, hence we don't kill it in the above loop
     end
+end
+
+local old_item_pickup = item_pickup
+function item_pickup(entity_item, entity_who_picked, item_name)
+    local old_perk_pickup = perk_pickup
+    perk_pickup = EntityHasTag(entity_item, MOD.temple_perk) and new_perk_pickup or perk_pickup
+    old_item_pickup(entity_item, entity_who_picked, item_name)
+    perk_pickup = old_perk_pickup
 end

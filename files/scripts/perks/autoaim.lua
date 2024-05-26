@@ -1,4 +1,4 @@
-dofile_once("mods/iota_multiplayer/files/scripts/lib/isutilities.lua")
+dofile_once("mods/iota_multiplayer/files/scripts/lib/sult.lua"):import()
 
 local projectile = GetUpdatedEntityID()
 local projectile_x, projectile_y = EntityGetFirstHitboxCenter(projectile)

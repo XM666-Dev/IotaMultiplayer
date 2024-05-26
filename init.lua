@@ -1,27 +1,27 @@
 --IotaMultiplayer - Created by ImmortalDamned
 --Github https://github.com/XM666-Dev/IotaMultiplayer
 
-dofile_once("mods/iota_multiplayer/lib.lua")
+dofile_once("mods/iota_multiplayer/lib.lua"):import()
 
 ModLuaFileAppend("mods/mnee/bindings.lua", "mods/iota_multiplayer/mnee.lua")
 ModLuaFileAppend("data/scripts/biomes/temple_altar.lua", "mods/iota_multiplayer/files/scripts/biomes/temple_altar_append.lua")
-ModLuaFileAppend("data/scripts/perks/perk.lua", "mods/iota_multiplayer/files/scripts/perks/perk_append.lua")
+ModLuaFileAppend("data/scripts/perks/perk_pickup.lua", "mods/iota_multiplayer/files/scripts/perks/perk_pickup_append.lua")
 
 append_translations("mods/iota_multiplayer/files/translations.csv")
 
 function OnWorldInitialized()
-    set_dictionary_metatable()
+    set_mod_accessor()
 end
 
 function OnPlayerSpawned(player)
     player_spawned = true
-    if has_globals_value_or_set(MULTIPLAYER.player_spawned_once) then
+    primary_player = player
+    if has_globals_value_or_set(MOD.player_spawned_once) then
         return
     end
     add_player(player)
-    primary_player = player
     local x, y = EntityGetTransform(player)
-    for i = 1, ModSettingGet(MULTIPLAYER.player_num) do
+    for i = 1, math.floor(ModSettingGet(MOD.player_num) + 0.5) do
         if i > 1 then
             load_player(x, y)
         end
@@ -30,28 +30,6 @@ function OnPlayerSpawned(player)
             ui_description = "$actiondesc_autoaim",
             perk_icon = "data/ui_gfx/gun_actions/autoaim.png"
         }, "mods/iota_multiplayer/files/scripts/perks/autoaim_pickup.lua")
-    end
-end
-
-function update_common()
-    local players = get_players()
-    if mnee.mnin_bind(get_id(MULTIPLAYER), "switch_player", false, true) or not camera_centered_player and player_spawned then
-        local entities = camera_centered_player and table.filter(players, function(player)
-            return PlayerData(player).user > PlayerData(camera_centered_player).user
-        end) or {}
-        entities = #entities > 0 and entities or players
-        camera_centered_player = table.iterate(entities, function(a, b)
-            return not b or PlayerData(a).user < PlayerData(b).user
-        end)
-    end
-    if mnee.mnin_bind(get_id(MULTIPLAYER), "toggle_teleport", false, true) then
-        for _, player in ipairs(players) do
-            if player ~= camera_centered_player then
-                local from_x, from_y = EntityGetTransform(player)
-                local to_x, to_y = EntityGetTransform(camera_centered_player)
-                teleport(player, from_x, from_y, to_x, to_y)
-            end
-        end
     end
 end
 
@@ -77,37 +55,37 @@ function update_controls()
         end
 
         local throw, throw_gone, throw_jpad = player_data:mnin_bind("throw", false, false, false, false, "guied")
-        player_data.controls.mButtonDownThrow = throw and not (throw_jpad and player_data:inventory_open())
+        player_data.controls.mButtonDownThrow = throw and not (throw_jpad and player_data:is_inventory_open())
         if player_data:mnin_bind("throw", false, true, false, false, "guied") and player_data.controls.mButtonDownThrow then
             player_data.controls.mButtonFrameThrow = get_frame_num_next()
         end
 
         local interact, interact_gone, interact_jpad = player_data:mnin_bind("interact")
-        player_data.controls.mButtonDownInteract = interact and not (interact_jpad and player_data:inventory_open())
+        player_data.controls.mButtonDownInteract = interact and not (interact_jpad and player_data:is_inventory_open())
         if player_data:mnin_bind("interact", false, true) and player_data.controls.mButtonDownInteract then
             player_data.controls.mButtonFrameInteract = get_frame_num_next()
         end
 
         local left, left_gone, left_jpad = player_data:mnin_bind("left")
-        player_data.controls.mButtonDownLeft = left and not (left_jpad and player_data:inventory_open())
+        player_data.controls.mButtonDownLeft = left and not (left_jpad and player_data:is_inventory_open())
         if player_data:mnin_bind("left", false, true) and player_data.controls.mButtonDownLeft then
             player_data.controls.mButtonFrameLeft = get_frame_num_next()
         end
 
         local right, right_gone, right_jpad = player_data:mnin_bind("right")
-        player_data.controls.mButtonDownRight = right and not (right_jpad and player_data:inventory_open())
+        player_data.controls.mButtonDownRight = right and not (right_jpad and player_data:is_inventory_open())
         if player_data:mnin_bind("right", false, true) and player_data.controls.mButtonDownRight then
             player_data.controls.mButtonFrameRight = get_frame_num_next()
         end
 
-        local up, up_gone, up_jpad = player_data:mnin_bind("up")
-        player_data.controls.mButtonDownUp = up and not (up_jpad and player_data:inventory_open())
+        local up, up_gone, up_jpad = player_data:mnin_bind("up") --when >=prev in (0.1, 0.95) for fly, and 0.25 for up
+        player_data.controls.mButtonDownUp = up and not (up_jpad and player_data:is_inventory_open())
         if player_data:mnin_bind("up", false, true) and player_data.controls.mButtonDownUp then
             player_data.controls.mButtonFrameUp = get_frame_num_next()
         end
 
         local down, down_gone, down_jpad = player_data:mnin_bind("down")
-        player_data.controls.mButtonDownDown = down and not (down_jpad and player_data:inventory_open())
+        player_data.controls.mButtonDownDown = down and not (down_jpad and player_data:is_inventory_open())
         if player_data:mnin_bind("down", false, true) and player_data.controls.mButtonDownDown then
             player_data.controls.mButtonFrameDown = get_frame_num_next()
         end
@@ -139,13 +117,13 @@ function update_controls()
             gui_enabled_player = player
         end
 
-        player_data.controls.mButtonDownDropItem = player_data:mnin_bind("dropitem") and player_data:inventory_open()
+        player_data.controls.mButtonDownDropItem = player_data:mnin_bind("dropitem") and player_data:is_inventory_open()
         if player_data:mnin_bind("dropitem", false, true) and player_data.controls.mButtonDownDropItem then
             player_data.controls.mButtonFrameDropItem = get_frame_num_next()
         end
 
         local kick, kick_gone, kick_jpad = player_data:mnin_bind("kick")
-        player_data.controls.mButtonDownKick = kick and not (kick_jpad and player_data:inventory_open())
+        player_data.controls.mButtonDownKick = kick and not (kick_jpad and player_data:is_inventory_open())
         if player_data:mnin_bind("kick", false, true) and player_data.controls.mButtonDownKick then
             player_data.controls.mButtonFrameKick = get_frame_num_next()
         end
@@ -164,23 +142,23 @@ function update_controls()
 
         local aim, aim_gone, aim_buttoned = player_data:mnin_stick("aim")
         if aim_gone then
-            local mouse_x, mouse_y = DEBUG_GetMouseWorld()
-            local aiming_vector_x, aiming_vector_y = mouse_x - player_x, mouse_y - player_y
+            local mouse_position_x, mouse_position_y = DEBUG_GetMouseWorld()
+            local aiming_vector_x, aiming_vector_y = mouse_position_x - player_x, mouse_position_y - player_y
             local magnitude = math.max(get_magnitude(aiming_vector_x, aiming_vector_y), 100)
             local aiming_vector_normalized_x, aiming_vector_normalized_y = aiming_vector_x / magnitude, aiming_vector_y / magnitude
             player_data.controls("mAimingVector").set(aiming_vector_x, aiming_vector_y)
             player_data.controls("mAimingVectorNormalized").set(aiming_vector_normalized_x, aiming_vector_normalized_y)
             local mouse_position_raw_x, mouse_position_raw_y = InputGetMousePosOnScreen()
             local mouse_position_raw_prev_x, mouse_position_raw_prev_y = player_data.controls("mMousePositionRaw").get()
-            player_data.controls("mMousePosition").set(mouse_x, mouse_y)
+            player_data.controls("mMousePosition").set(mouse_position_x, mouse_position_y)
             player_data.controls("mMousePositionRaw").set(mouse_position_raw_x, mouse_position_raw_y)
             player_data.controls("mMousePositionRawPrev").set(mouse_position_raw_prev_x, mouse_position_raw_prev_y)
             player_data.controls("mMouseDelta").set(mouse_position_raw_x - mouse_position_raw_prev_x, mouse_position_raw_y - mouse_position_raw_prev_y)
         else
-            if player_data:inventory_open() then
+            if player_data:is_inventory_open() then
                 aim = { 0, 0 }
             end
-            local function pressed(a, b, buttoned)
+            local function is_pressed(a, b, buttoned)
                 return (a ~= b or not buttoned) and b ~= 0
             end
             local aiming_vector_x, aiming_vector_y = unpack(aim)
@@ -189,18 +167,18 @@ function update_controls()
             if aim[1] == 0 and aim[2] == 0 then
                 aiming_vector_x, aiming_vector_y = aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y
             end
-            if pressed(gamepad_aiming_vector_raw_x, aim[1], aim_buttoned[1]) or pressed(gamepad_aiming_vector_raw_y, aim[2], aim_buttoned[2]) then
+            if is_pressed(gamepad_aiming_vector_raw_x, aim[1], aim_buttoned[1]) or is_pressed(gamepad_aiming_vector_raw_y, aim[2], aim_buttoned[2]) then
                 aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y = unpack(aim)
             end
             player_data.controls("mAimingVector").set(aiming_vector_x * 100, aiming_vector_y * 100)
             player_data.controls("mAimingVectorNormalized").set(unpack(aim))
             player_data.controls("mAimingVectorNonZeroLatest").set(aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y)
             player_data.controls("mGamepadAimingVectorRaw").set(unpack(aim))
-            local cursor_x, cursor_y = player_data.controls("mGamePadCursorInWorld").get()
-            local mouse_position_raw_x, mouse_position_raw_y = get_pos_from_world(gui, cursor_x, cursor_y)
+            local mouse_position_x, mouse_position_y = player_data.controls("mGamePadCursorInWorld").get()
+            local mouse_position_raw_x, mouse_position_raw_y = get_pos_from_world(gui, mouse_position_x, mouse_position_y)
             mouse_position_raw_x, mouse_position_raw_y = mouse_position_raw_x * 2, mouse_position_raw_y * 2
             local mouse_position_raw_prev_x, mouse_position_raw_prev_y = player_data.controls("mMousePositionRaw").get()
-            player_data.controls("mMousePosition").set(cursor_x, cursor_y)
+            player_data.controls("mMousePosition").set(mouse_position_x, mouse_position_y)
             player_data.controls("mMousePositionRaw").set(mouse_position_raw_x, mouse_position_raw_y)
             player_data.controls("mMousePositionRawPrev").set(mouse_position_raw_prev_x, mouse_position_raw_prev_y)
             player_data.controls("mMouseDelta").set(mouse_position_raw_x - mouse_position_raw_prev_x, mouse_position_raw_y - mouse_position_raw_prev_y)
@@ -209,30 +187,41 @@ function update_controls()
 end
 
 function update_camera()
+    local players = get_players()
+    if mnee.mnin_bind(get_id(MOD), "switch_player", false, true) or not is_vaild(camera_centered_player) and player_spawned then
+        local entities = is_vaild(camera_centered_player) and table.filter(players, function(player)
+            return PlayerData(player).user > PlayerData(camera_centered_player).user
+        end) or {}
+        entities = #entities > 0 and entities or players
+        camera_centered_player = table.iterate(entities, function(a, b)
+            return not is_vaild(b) or PlayerData(a).user < PlayerData(b).user
+        end)
+    end
     local primary_player_data = PlayerData(primary_player)
     local camera_centered_player_data = PlayerData(camera_centered_player)
     local previous_camera_centered_player_data = PlayerData(previous_camera_centered_player)
-    if camera_centered_player_data.shooter and previous_camera_centered_player_data.shooter then
-        camera_centered_player_data.shooter("mSmoothedCameraPosition").set(previous_camera_centered_player_data.shooter("mSmoothedCameraPosition").get())
-        camera_centered_player_data.shooter("mSmoothedAimingVector").set(previous_camera_centered_player_data.shooter("mSmoothedAimingVector").get())
-        camera_centered_player_data.shooter("mDesiredCameraPos").set(previous_camera_centered_player_data.shooter("mDesiredCameraPos").get())
+    if camera_centered_player ~= previous_camera_centered_player then
+        if camera_centered_player_data.shooter and previous_camera_centered_player_data.shooter then
+            camera_centered_player_data.shooter("mSmoothedCameraPosition").set(previous_camera_centered_player_data.shooter("mSmoothedCameraPosition").get())
+            camera_centered_player_data.shooter("mSmoothedAimingVector").set(previous_camera_centered_player_data.shooter("mSmoothedAimingVector").get())
+            camera_centered_player_data.shooter("mDesiredCameraPos").set(previous_camera_centered_player_data.shooter("mDesiredCameraPos").get())
+        end
+        for _, player in ipairs(players) do
+            local player_data = PlayerData(player)
+            if player_data.listener then
+                EntitySetComponentIsEnabled(player, get_id(player_data.listener), player == camera_centered_player)
+            end
+        end
+        previous_camera_centered_player = camera_centered_player
     end
     if primary_player_data.shooter and camera_centered_player_data.shooter then
         primary_player_data.shooter("mDesiredCameraPos").set(camera_centered_player_data.shooter("mDesiredCameraPos").get())
     end
-    local players = get_players()
-    for _, player in ipairs(players) do
-        local player_data = PlayerData(player)
-        if player_data.listener then
-            EntitySetComponentIsEnabled(player, get_id(player_data.listener), player == camera_centered_player)
-        end
-    end
-    previous_camera_centered_player = camera_centered_player
 end
 
 function update_gui()
     local gui_enabled_player_data = PlayerData(gui_enabled_player)
-    if not gui_enabled_player or gui_enabled_player_data.controls.mButtonFrameInventory == get_frame_num_next() == gui_enabled_player_data:inventory_open() then
+    if not is_vaild(gui_enabled_player) or gui_enabled_player_data.controls.mButtonFrameInventory == get_frame_num_next() == gui_enabled_player_data:is_inventory_open() then
         gui_enabled_player = camera_centered_player
     end
     if gui_enabled_player ~= previous_gui_enabled_player then
@@ -256,36 +245,46 @@ function update_gui()
     end
 end
 
-function update_wallet()
+function update_common()
     local players = get_players()
-    local previous_money = money
-    for _, player in ipairs(players) do
-        local player_data = PlayerData(player)
-        if player_data.wallet then
-            money = money + player_data.wallet.money - previous_money
+    if mnee.mnin_bind(get_id(MOD), "toggle_teleport", false, true) then
+        for _, player in ipairs(players) do
+            if player ~= camera_centered_player then
+                local from_x, from_y = EntityGetTransform(player)
+                local to_x, to_y = EntityGetTransform(camera_centered_player)
+                teleport(player, from_x, from_y, to_x, to_y)
+            end
+        end
+    end
+    if ModSettingGet(MOD.share_money) then
+        local previous_money = money
+        for _, player in ipairs(players) do
+            local player_data = PlayerData(player)
+            if player_data.wallet then
+                money = money + player_data.wallet.money - previous_money
+            end
+        end
+        for _, player in ipairs(players) do
+            local player_data = PlayerData(player)
+            if player_data.wallet then
+                player_data.wallet.money = money
+            end
         end
     end
     for _, player in ipairs(players) do
-        local player_data = PlayerData(player)
-        if player_data.wallet then
-            player_data.wallet.money = money
-        end
-    end
-end
-
-function updata_misc()
-    local players = get_players()
-    for _, player in ipairs(players) do
-        PlayerData(player).pickupper.is_immune_to_kicks = ModSettingGet(MULTIPLAYER.kick_immunity)
+        PlayerData(player).pick_upper.is_immune_to_kicks = not ModSettingGet(MOD.friendly_fire_kick_drop)
     end
 end
 
 gui = GuiCreate()
 
 function draw_gui()
+    if not player_spawned or max_user < 2 then
+        return
+    end
     GuiStartFrame(gui)
     GuiOptionsAdd(gui, GUI_OPTION.Align_HorizontalCenter)
-    if gui_enabled_player then
+    if is_vaild(gui_enabled_player) then
         GuiText(gui, 10, 25, "P" .. PlayerData(gui_enabled_player).user)
     end
     local players = get_players()
@@ -297,12 +296,10 @@ function draw_gui()
 end
 
 function OnWorldPreUpdate()
-    update_common()
-    update_camera()
     update_controls()
+    update_camera()
     update_gui()
-    update_wallet()
-    updata_misc()
+    update_common()
 end
 
 function OnWorldPostUpdate()

@@ -1,4 +1,5 @@
-dofile_once("mods/iota_multiplayer/lib.lua")
+dofile_once("mods/iota_multiplayer/lib.lua"):import()
+
 dofile_once("data/scripts/lib/mod_settings.lua")
 
 local parse_csv = dofile_once("mods/iota_multiplayer/files/scripts/lib/csv.lua")
@@ -9,7 +10,7 @@ function get_text(key)
     return text ~= "" and text or translations.get(key, "en")
 end
 
-local mod_id = get_id(MULTIPLAYER)
+local mod_id = get_id(MOD)
 mod_settings_version = 1
 mod_settings = {
     Setting({
@@ -23,36 +24,81 @@ mod_settings = {
         ui_description = function() return get_text("iota_multiplayer.settingdesc_player_num") end
     }),
     Setting({
-        id = "temple_heart_share",
-        value_default = true,
-        scope = MOD_SETTING_SCOPE_RUNTIME
+        category_id = "share",
+        settings = {
+            Setting({
+                id = "share_money",
+                value_default = true,
+                scope = MOD_SETTING_SCOPE_RUNTIME
+            }, {
+                ui_name = function() return get_text("iota_multiplayer.setting_share_money") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_share_money") end
+            }),
+            Setting({
+                id = "share_temple_heart",
+                value_default = true,
+                scope = MOD_SETTING_SCOPE_RUNTIME
+            }, {
+                ui_name = function() return get_text("iota_multiplayer.setting_share_temple_heart") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_heart") end
+            }),
+            Setting({
+                id = "share_temple_refresh",
+                value_default = true,
+                scope = MOD_SETTING_SCOPE_RUNTIME
+            }, {
+                ui_name = function() return get_text("iota_multiplayer.setting_share_temple_refresh") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_refresh") end
+            }),
+            Setting({
+                id = "share_temple_perk",
+                value_default = true,
+                scope = MOD_SETTING_SCOPE_RUNTIME
+            }, {
+                ui_name = function() return get_text("iota_multiplayer.setting_share_temple_perk") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_perk") end
+            })
+        }
     }, {
-        ui_name = function() return get_text("iota_multiplayer.setting_temple_heart_share") end,
-        ui_description = function() return get_text("iota_multiplayer.settingdesc_temple_heart_share") end
+        ui_name = function() return get_text("iota_multiplayer.setting_share") end,
+        ui_description = function() return get_text("iota_multiplayer.settingdesc_share") end
     }),
     Setting({
-        id = "temple_refresh_share",
-        value_default = true,
-        scope = MOD_SETTING_SCOPE_RUNTIME
+        category_id = "friendly_fire",
+        settings = {
+            Setting({
+                id = "friendly_fire_percentage",
+                value_default = 0.5,
+                value_min = 0,
+                value_max = 1,
+                value_display_multiplier = 100,
+                value_display_formatting = " $0 %",
+                scope = MOD_SETTING_SCOPE_RUNTIME
+            }, {
+                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_percentage") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_percentage") end
+
+            }),
+            Setting({
+                id = "friendly_fire_kick",
+                value_default = false,
+                scope = MOD_SETTING_SCOPE_RUNTIME
+            }, {
+                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick") end
+            }),
+            Setting({
+                id = "friendly_fire_kick_drop",
+                value_default = false,
+                scope = MOD_SETTING_SCOPE_RUNTIME
+            }, {
+                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick_drop") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick_drop") end
+            })
+        }
     }, {
-        ui_name = function() return get_text("iota_multiplayer.setting_temple_refresh_share") end,
-        ui_description = function() return get_text("iota_multiplayer.settingdesc_temple_refresh_share") end
-    }),
-    Setting({
-        id = "temple_perk_respawn",
-        value_default = true,
-        scope = MOD_SETTING_SCOPE_RUNTIME
-    }, {
-        ui_name = function() return get_text("iota_multiplayer.setting_temple_perk_respawn") end,
-        ui_description = function() return get_text("iota_multiplayer.settingdesc_temple_perk_respawn") end
-    }),
-    Setting({
-        id = "kick_immunity",
-        value_default = true,
-        scope = MOD_SETTING_SCOPE_RUNTIME
-    }, {
-        ui_name = function() return get_text("iota_multiplayer.setting_kick_immunity") end,
-        ui_description = function() return get_text("iota_multiplayer.settingdesc_kick_immunity") end
+        ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire") end,
+        ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire") end
     })
 }
 

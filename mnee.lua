@@ -1,11 +1,11 @@
-dofile_once("mods/iota_multiplayer/lib.lua")
+dofile_once("mods/iota_multiplayer/lib.lua"):import()
 
-mneedata[get_id(MULTIPLAYER)] = {
+mneedata[get_id(MOD)] = {
     name = "$iota_multiplayer.bindings_common",
     desc = "$iota_multiplayer.bindingsdesc_common"
 }
 
-bindings[get_id(MULTIPLAYER)] = {
+bindings[get_id(MOD)] = {
     switch_player = {
         order_id = "a",
         name = "$iota_multiplayer.binding_switch_player",
@@ -20,14 +20,13 @@ bindings[get_id(MULTIPLAYER)] = {
     }
 }
 
-
 for i = 1, 8 do
     local id = i - 1
     local jpad = i > 1 and i < 6
     local function get_player_bindingdesc(param)
         return GameTextGet("$iota_multiplayer.bindingdesc_player", tostring(i), GameTextGet(param))
     end
-    mneedata[MULTIPLAYER .. i] = {
+    mneedata[MOD .. i] = {
         name = function()
             return GameTextGet("$iota_multiplayer.bindings_player", tostring(i))
         end,
@@ -35,26 +34,34 @@ for i = 1, 8 do
             return GameTextGet("$iota_multiplayer.bindingsdesc_player", tostring(i))
         end,
         is_hidden = function()
-            set_dictionary_metatable()
+            set_mod_accessor()
             return max_user < i
         end
     }
-    bindings[MULTIPLAYER .. i] = {
+    bindings[MOD .. i] = {
         up = {
             order_id = "a",
-            jpad_type = "MOTION",
-            deadzone = 0.0,
             name = "$controls_up",
             desc = function() return get_player_bindingdesc("$controls_up") end,
+            jpad_type = "MOTION",
+            deadzone = 0.1,
             keys = { [jpad and id .. "gpd_l2" or "w"] = 1 },
             keys_alt = { [jpad and "_" or "space"] = 1 }
         },
         down = {
             order_id = "b",
             jpad_type = "MOTION",
-            deadzone = 0.9,
+            deadzone = 0.5,
             name = "$controls_down",
             desc = function() return get_player_bindingdesc("$controls_down") end,
+            --on_down = function(data, is_alt, is_jpad)
+            --    local name
+            --    for k in pairs(data.keys) do
+            --        name = k
+            --    end
+            --    local v = mnee.get_axes()[string.gsub(string.sub(name, 1, -3), "_btn_", "_axis_")]
+            --    return v > data.deadzone
+            --end,
             keys = { [jpad and id .. "gpd_btn_lv_+" or "s"] = 1 }
         },
         left = {
