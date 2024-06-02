@@ -3,5 +3,10 @@ ControlsComponent
     mAimingVectorNormalized -controls throw
     mMousePosition -controls look
     mMousePositionRaw -controls camera
+    mButtonDownUp -greater equal to prev and between (0.1, 0.95) for fly, between (0.25, 1) for up
 LuaComponent
     script_kick -when e1 kick e2, call e1.kick(e1) first, then call e2.kick(e1)
+
+Entity checknil: ~= 0
+Component checknil: ~= nil
+Any checknil: ~= nil

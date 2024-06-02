@@ -1,4 +1,11 @@
-﻿alpha0.5.2 #20240526
+﻿alpha0.5.3 #20240602
+-fix autoaim target player
+-better autoaim toggle
+-better compatibility
+-optimize code
+-fix can not pick up item
+
+alpha0.5.2 #20240526
 -add more friendly_fire settings
 -better compatibility
 -improve sharing

@@ -1,7 +1,7 @@
 --IotaMultiplayer - Created by ImmortalDamned
 --Github https://github.com/XM666-Dev/IotaMultiplayer
 
-dofile_once("mods/iota_multiplayer/lib.lua"):import()
+dofile_once("mods/iota_multiplayer/lib.lua")
 
 ModLuaFileAppend("mods/mnee/bindings.lua", "mods/iota_multiplayer/mnee.lua")
 ModLuaFileAppend("data/scripts/biomes/temple_altar.lua", "mods/iota_multiplayer/files/scripts/biomes/temple_altar_append.lua")
@@ -10,27 +10,25 @@ ModLuaFileAppend("data/scripts/perks/perk_pickup.lua", "mods/iota_multiplayer/fi
 append_translations("mods/iota_multiplayer/files/translations.csv")
 
 function OnWorldInitialized()
-    set_mod_accessor()
+    ModAccessorTable(_G)
 end
 
 function OnPlayerSpawned(player)
     player_spawned = true
     primary_player = player
-    if has_globals_value_or_set(MOD.player_spawned_once) then
+    if has_flag_run_or_add(MOD.player_spawned_once) then
         return
     end
     add_player(player)
     local x, y = EntityGetTransform(player)
-    for i = 1, math.floor(ModSettingGet(MOD.player_num) + 0.5) do
-        if i > 1 then
-            load_player(x, y)
-        end
-        perk_spawn_with_data(x, y, {
-            ui_name = "$action_autoaim",
-            ui_description = "$actiondesc_autoaim",
-            perk_icon = "data/ui_gfx/gun_actions/autoaim.png"
-        }, "mods/iota_multiplayer/files/scripts/perks/autoaim_pickup.lua")
+    for i = 1, math.round(ModSettingGet(MOD.player_num)) - 1 do
+        load_player(x, y)
     end
+    perk_spawn_with_data(x, y, {
+        ui_name = "$action_autoaim",
+        ui_description = "$actiondesc_autoaim",
+        perk_icon = "data/ui_gfx/gun_actions/autoaim.png"
+    }, "mods/iota_multiplayer/files/scripts/perks/autoaim_pickup.lua")
 end
 
 function update_controls()
@@ -39,6 +37,9 @@ function update_controls()
         local player_data = PlayerData(player)
         local player_x, player_y = EntityGetTransform(player)
 
+        if player_data.controls == nil then
+            goto continue
+        end
         player_data.controls.enabled = false
 
         player_data.controls.mButtonDownFire = player_data:mnin_bind("usewand", false, false, false, false, "guied")
@@ -64,6 +65,7 @@ function update_controls()
         player_data.controls.mButtonDownInteract = interact and not (interact_jpad and player_data:is_inventory_open())
         if player_data:mnin_bind("interact", false, true) and player_data.controls.mButtonDownInteract then
             player_data.controls.mButtonFrameInteract = get_frame_num_next()
+            gui_enabled_player = player
         end
 
         local left, left_gone, left_jpad = player_data:mnin_bind("left")
@@ -78,7 +80,7 @@ function update_controls()
             player_data.controls.mButtonFrameRight = get_frame_num_next()
         end
 
-        local up, up_gone, up_jpad = player_data:mnin_bind("up") --when >=prev in (0.1, 0.95) for fly, and 0.25 for up
+        local up, up_gone, up_jpad = player_data:mnin_bind("up")
         player_data.controls.mButtonDownUp = up and not (up_jpad and player_data:is_inventory_open())
         if player_data:mnin_bind("up", false, true) and player_data.controls.mButtonDownUp then
             player_data.controls.mButtonFrameUp = get_frame_num_next()
@@ -154,35 +156,36 @@ function update_controls()
             player_data.controls("mMousePositionRaw").set(mouse_position_raw_x, mouse_position_raw_y)
             player_data.controls("mMousePositionRawPrev").set(mouse_position_raw_prev_x, mouse_position_raw_prev_y)
             player_data.controls("mMouseDelta").set(mouse_position_raw_x - mouse_position_raw_prev_x, mouse_position_raw_y - mouse_position_raw_prev_y)
-        else
-            if player_data:is_inventory_open() then
-                aim = { 0, 0 }
-            end
-            local function is_pressed(a, b, buttoned)
-                return (a ~= b or not buttoned) and b ~= 0
-            end
-            local aiming_vector_x, aiming_vector_y = unpack(aim)
-            local aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y = player_data.controls("mAimingVectorNonZeroLatest").get()
-            local gamepad_aiming_vector_raw_x, gamepad_aiming_vector_raw_y = player_data.controls("mGamepadAimingVectorRaw").get()
-            if aim[1] == 0 and aim[2] == 0 then
-                aiming_vector_x, aiming_vector_y = aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y
-            end
-            if is_pressed(gamepad_aiming_vector_raw_x, aim[1], aim_buttoned[1]) or is_pressed(gamepad_aiming_vector_raw_y, aim[2], aim_buttoned[2]) then
-                aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y = unpack(aim)
-            end
-            player_data.controls("mAimingVector").set(aiming_vector_x * 100, aiming_vector_y * 100)
-            player_data.controls("mAimingVectorNormalized").set(unpack(aim))
-            player_data.controls("mAimingVectorNonZeroLatest").set(aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y)
-            player_data.controls("mGamepadAimingVectorRaw").set(unpack(aim))
-            local mouse_position_x, mouse_position_y = player_data.controls("mGamePadCursorInWorld").get()
-            local mouse_position_raw_x, mouse_position_raw_y = get_pos_from_world(gui, mouse_position_x, mouse_position_y)
-            mouse_position_raw_x, mouse_position_raw_y = mouse_position_raw_x * 2, mouse_position_raw_y * 2
-            local mouse_position_raw_prev_x, mouse_position_raw_prev_y = player_data.controls("mMousePositionRaw").get()
-            player_data.controls("mMousePosition").set(mouse_position_x, mouse_position_y)
-            player_data.controls("mMousePositionRaw").set(mouse_position_raw_x, mouse_position_raw_y)
-            player_data.controls("mMousePositionRawPrev").set(mouse_position_raw_prev_x, mouse_position_raw_prev_y)
-            player_data.controls("mMouseDelta").set(mouse_position_raw_x - mouse_position_raw_prev_x, mouse_position_raw_y - mouse_position_raw_prev_y)
+            goto continue
         end
+        if player_data:is_inventory_open() then
+            aim = { 0, 0 }
+        end
+        local function is_pressed(a, b, buttoned)
+            return (a ~= b or not buttoned) and b ~= 0
+        end
+        local aiming_vector_x, aiming_vector_y = unpack(aim)
+        local aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y = player_data.controls("mAimingVectorNonZeroLatest").get()
+        local gamepad_aiming_vector_raw_x, gamepad_aiming_vector_raw_y = player_data.controls("mGamepadAimingVectorRaw").get()
+        if aim[1] == 0 and aim[2] == 0 then
+            aiming_vector_x, aiming_vector_y = aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y
+        end
+        if is_pressed(gamepad_aiming_vector_raw_x, aim[1], aim_buttoned[1]) or is_pressed(gamepad_aiming_vector_raw_y, aim[2], aim_buttoned[2]) then
+            aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y = unpack(aim)
+        end
+        player_data.controls("mAimingVector").set(aiming_vector_x * 100, aiming_vector_y * 100)
+        player_data.controls("mAimingVectorNormalized").set(unpack(aim))
+        player_data.controls("mAimingVectorNonZeroLatest").set(aiming_vector_non_zero_latest_x, aiming_vector_non_zero_latest_y)
+        player_data.controls("mGamepadAimingVectorRaw").set(unpack(aim))
+        local mouse_position_x, mouse_position_y = player_data.controls("mGamePadCursorInWorld").get()
+        local mouse_position_raw_x, mouse_position_raw_y = get_pos_on_screen(gui, mouse_position_x, mouse_position_y)
+        mouse_position_raw_x, mouse_position_raw_y = mouse_position_raw_x * 2, mouse_position_raw_y * 2
+        local mouse_position_raw_prev_x, mouse_position_raw_prev_y = player_data.controls("mMousePositionRaw").get()
+        player_data.controls("mMousePosition").set(mouse_position_x, mouse_position_y)
+        player_data.controls("mMousePositionRaw").set(mouse_position_raw_x, mouse_position_raw_y)
+        player_data.controls("mMousePositionRawPrev").set(mouse_position_raw_prev_x, mouse_position_raw_prev_y)
+        player_data.controls("mMouseDelta").set(mouse_position_raw_x - mouse_position_raw_prev_x, mouse_position_raw_y - mouse_position_raw_prev_y)
+        ::continue::
     end
 end
 
@@ -194,7 +197,7 @@ function update_camera()
         end) or {}
         entities = #entities > 0 and entities or players
         camera_centered_player = table.iterate(entities, function(a, b)
-            return not is_vaild(b) or PlayerData(a).user < PlayerData(b).user
+            return b == nil or PlayerData(a).user < PlayerData(b).user
         end)
     end
     local primary_player_data = PlayerData(primary_player)
@@ -221,7 +224,7 @@ end
 
 function update_gui()
     local gui_enabled_player_data = PlayerData(gui_enabled_player)
-    if not is_vaild(gui_enabled_player) or gui_enabled_player_data.controls.mButtonFrameInventory == get_frame_num_next() == gui_enabled_player_data:is_inventory_open() then
+    if not is_vaild(gui_enabled_player) or gui_enabled_player_data.controls.mButtonFrameInventory == get_frame_num_next() == gui_enabled_player_data:is_inventory_open() and gui_enabled_player_data.controls.mButtonFrameInteract ~= get_frame_num_next() then
         gui_enabled_player = camera_centered_player
     end
     if gui_enabled_player ~= previous_gui_enabled_player then
@@ -290,7 +293,7 @@ function draw_gui()
     local players = get_players()
     for _, player in ipairs(players) do
         local player_x, player_y = EntityGetTransform(player)
-        local x, y = get_pos_from_world(gui, player_x, player_y)
+        local x, y = get_pos_on_screen(gui, player_x, player_y)
         GuiText(gui, x, y + 5, "P" .. PlayerData(player).user)
     end
 end

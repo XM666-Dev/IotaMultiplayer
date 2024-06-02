@@ -1,4 +1,4 @@
-dofile_once("mods/iota_multiplayer/lib.lua"):import()
+dofile_once("mods/iota_multiplayer/lib.lua")
 
 blockings = {}
 
@@ -32,5 +32,30 @@ function kick(entity_who_kicked)
     local this = GetUpdatedEntityID()
     if this == entity_who_kicked then
         add_blocking(this)
+    end
+end
+
+function damage_received(damage, message, entity_thats_responsible, is_fatal, projectile_thats_responsible)
+    if is_fatal then
+        local this = GetUpdatedEntityID()
+        local this_data = PlayerData(this)
+        --this_data.damage_model.wait_for_kill_flag_on_death = true
+        --EntityAddTag(this, MOD.disabled_by_fatal_damage)
+        --EntityRemoveTag(this, MOD.player)
+        --disable(this)
+        --ComponentSetValue2(get_id(this_data.shooter), "mCessationDo", true)
+        --ComponentSetValue2(get_id(this_data.shooter), "mCessationLifetime", 10000)
+    end
+end
+
+function disable(entity)
+    for _, component in ipairs(EntityGetAllComponents(entity)) do
+        if ComponentGetIsEnabled(component) then
+            ComponentAddTag(component, MOD.disabled_by_fatal_damage)
+            EntitySetComponentIsEnabled(entity, component, false)
+        end
+    end
+    for _, child in ipairs(get_children(entity)) do
+        disable(child)
     end
 end

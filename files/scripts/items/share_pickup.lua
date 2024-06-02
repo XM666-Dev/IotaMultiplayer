@@ -1,4 +1,4 @@
-dofile_once("mods/iota_multiplayer/lib.lua"):import()
+dofile_once("mods/iota_multiplayer/lib.lua")
 
 function item_pickup(entity_item, entity_pickupper, item_name)
     local filename = EntityGetFilename(entity_item)

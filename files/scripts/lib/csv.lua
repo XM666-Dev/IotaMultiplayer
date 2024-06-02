@@ -1,7 +1,7 @@
 ---解析器
 
 ---@param str string
-local function ParseCSV(str)
+function parse_csv(str)
     local cellDatas = {}
     local rowHeads = {}
     local cellArrangement = {}
@@ -115,4 +115,4 @@ local function ParseCSV(str)
     return result
 end
 
-return ParseCSV
+return parse_csv

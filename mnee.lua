@@ -1,4 +1,4 @@
-dofile_once("mods/iota_multiplayer/lib.lua"):import()
+dofile_once("mods/iota_multiplayer/lib.lua")
 
 mneedata[get_id(MOD)] = {
     name = "$iota_multiplayer.bindings_common",
@@ -34,7 +34,7 @@ for i = 1, 8 do
             return GameTextGet("$iota_multiplayer.bindingsdesc_player", tostring(i))
         end,
         is_hidden = function()
-            set_mod_accessor()
+            ModAccessorTable(_G)
             return max_user < i
         end
     }
@@ -54,14 +54,6 @@ for i = 1, 8 do
             deadzone = 0.5,
             name = "$controls_down",
             desc = function() return get_player_bindingdesc("$controls_down") end,
-            --on_down = function(data, is_alt, is_jpad)
-            --    local name
-            --    for k in pairs(data.keys) do
-            --        name = k
-            --    end
-            --    local v = mnee.get_axes()[string.gsub(string.sub(name, 1, -3), "_btn_", "_axis_")]
-            --    return v > data.deadzone
-            --end,
             keys = { [jpad and id .. "gpd_btn_lv_+" or "s"] = 1 }
         },
         left = {

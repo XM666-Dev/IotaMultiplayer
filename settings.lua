@@ -1,8 +1,7 @@
-dofile_once("mods/iota_multiplayer/lib.lua"):import()
-
+dofile_once("mods/iota_multiplayer/lib.lua")
 dofile_once("data/scripts/lib/mod_settings.lua")
+dofile_once("mods/iota_multiplayer/files/scripts/lib/csv.lua")
 
-local parse_csv = dofile_once("mods/iota_multiplayer/files/scripts/lib/csv.lua")
 local translations = parse_csv(ModTextFileGetContent("mods/iota_multiplayer/files/translations.csv"))
 
 function get_text(key)
@@ -13,7 +12,7 @@ end
 local mod_id = get_id(MOD)
 mod_settings_version = 1
 mod_settings = {
-    Setting({
+    GetterTable({
         id = "player_num",
         value_default = 2,
         value_min = 1,
@@ -23,10 +22,10 @@ mod_settings = {
         ui_name = function() return get_text("iota_multiplayer.setting_player_num") end,
         ui_description = function() return get_text("iota_multiplayer.settingdesc_player_num") end
     }),
-    Setting({
+    GetterTable({
         category_id = "share",
         settings = {
-            Setting({
+            GetterTable({
                 id = "share_money",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME
@@ -34,7 +33,7 @@ mod_settings = {
                 ui_name = function() return get_text("iota_multiplayer.setting_share_money") end,
                 ui_description = function() return get_text("iota_multiplayer.settingdesc_share_money") end
             }),
-            Setting({
+            GetterTable({
                 id = "share_temple_heart",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME
@@ -42,7 +41,7 @@ mod_settings = {
                 ui_name = function() return get_text("iota_multiplayer.setting_share_temple_heart") end,
                 ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_heart") end
             }),
-            Setting({
+            GetterTable({
                 id = "share_temple_refresh",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME
@@ -50,7 +49,7 @@ mod_settings = {
                 ui_name = function() return get_text("iota_multiplayer.setting_share_temple_refresh") end,
                 ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_refresh") end
             }),
-            Setting({
+            GetterTable({
                 id = "share_temple_perk",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME
@@ -63,10 +62,10 @@ mod_settings = {
         ui_name = function() return get_text("iota_multiplayer.setting_share") end,
         ui_description = function() return get_text("iota_multiplayer.settingdesc_share") end
     }),
-    Setting({
+    GetterTable({
         category_id = "friendly_fire",
         settings = {
-            Setting({
+            GetterTable({
                 id = "friendly_fire_percentage",
                 value_default = 0.5,
                 value_min = 0,
@@ -79,7 +78,7 @@ mod_settings = {
                 ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_percentage") end
 
             }),
-            Setting({
+            GetterTable({
                 id = "friendly_fire_kick",
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME
@@ -87,7 +86,7 @@ mod_settings = {
                 ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick") end,
                 ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick") end
             }),
-            Setting({
+            GetterTable({
                 id = "friendly_fire_kick_drop",
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME
