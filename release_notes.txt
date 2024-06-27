@@ -2,6 +2,7 @@
 -fix can't pick up items (exclude spells)
 -better perk share compatibility
 -add resurrect
+-fix polymorph reduce money
 
 alpha0.5.3 #20240602
 -fix autoaim target player
