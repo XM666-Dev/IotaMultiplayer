@@ -7,27 +7,33 @@ function ModAccessorTable(t)
     local world_state = GameGetWorldStateEntity()
     return AccessorTable(t, {
         primary_player = TagEntityAccessor(MOD.primary_player),
-        gui_enabled_player = TagEntityAccessor(MOD.gui_enabled_player),
+        gui_enabled_player = TagEntityAccessor(MOD.gui_enabled_player, is_player_enabled),
         previous_gui_enabled_player = TagEntityAccessor(MOD.previous_gui_enabled_player),
-        camera_centered_player = TagEntityAccessor(MOD.camera_centered_player),
+        camera_centered_player = TagEntityAccessor(MOD.camera_centered_player, is_player_enabled),
         previous_camera_centered_player = TagEntityAccessor(MOD.previous_camera_centered_player),
-        max_user = EntityVariableAccessor(world_state, MOD.max_user, FIELD_INT),
-        money = EntityVariableAccessor(world_state, MOD.money, FIELD_INT)
+        max_user = EntityVariableAccessor(world_state, MOD.max_user, "value_int"),
+        money = EntityVariableAccessor(world_state, MOD.money, "value_int")
     })
 end
 
 function PlayerData(player)
-    if not is_vaild(player) then
-        return {}
-    end
-    return AccessorTable({
-        controls = get_first_component_data_including_disabled(player, "ControlsComponent"),
-        shooter = get_first_component_data_including_disabled(player, "PlatformShooterPlayerComponent"),
-        listener = get_first_component_data_including_disabled(player, "AudioListenerComponent"),
-        gui = get_first_component_data_including_disabled(player, "InventoryGuiComponent"),
-        wallet = get_first_component_data_including_disabled(player, "WalletComponent"),
-        pick_upper = get_first_component_data_including_disabled(player, "ItemPickUpperComponent"),
-        damage_model = get_first_component_data_including_disabled(player, "DamageModelComponent"),
+    local wallet = EntityGetFirstComponentIncludingDisabled(player, "WalletComponent")
+    return validate_entity(player) and AccessorTable({
+        controls = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "ControlsComponent")),
+        shooter = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "PlatformShooterPlayerComponent")),
+        listener = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "AudioListenerComponent")),
+        gui = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "InventoryGuiComponent")),
+        wallet = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "WalletComponent")),
+        pick_upper = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "ItemPickUpperComponent")),
+        damage_model = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "DamageModelComponent")),
+        lukki_disable_sprite = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "SpriteComponent", "lukki_disable")),
+        genome = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "GenomeDataComponent")),
+        get_arm_r = function(self)
+            local children = get_children(player)
+            return children[table.find(children, function(child)
+                return EntityGetName(child) == "arm_r" or EntityHasTag(child, "player_arm_r")
+            end)]
+        end,
         is_inventory_open = function(self)
             return self.gui and self.gui.mActive
         end,
@@ -41,8 +47,12 @@ function PlayerData(player)
             return mnee.mnin_stick(MOD .. self.user, name, dirty_mode, pressed_mode, is_vip, key_mode)
         end
     }, {
-        user = EntityVariableAccessor(player, MOD.user, FIELD_INT)
-    })
+        user = EntityVariableAccessor(player, MOD.user, "value_int"),
+        dead = EntityVariableAccessor(player, MOD.dead, "value_bool"),
+        previous_money = EntityVariableAccessor(player, MOD.previous_money, "value_int", wallet and ComponentGetValue2(wallet, "money")),
+        last_damage_message = EntityVariableAccessor(player, MOD.last_damage_message, "value_string"),
+        last_damage_entity_thats_responsible = EntityVariableAccessor(player, MOD.last_damage_entity_thats_responsible, "value_int")
+    }) or {}
 end
 
 function add_player(player)
@@ -51,10 +61,10 @@ function add_player(player)
     local player_data = PlayerData(player)
     player_data.user = max_user
     EntityAddComponent2(player, "LuaComponent", {
-        script_source_file = "mods/iota_multiplayer/files/scripts/animals/player_callback.lua",
-        script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/animals/player_callback.lua",
-        script_kick = "mods/iota_multiplayer/files/scripts/animals/player_callback.lua",
-        script_damage_received = "mods/iota_multiplayer/files/scripts/animals/player_callback.lua"
+        script_source_file = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
+        script_damage_received = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
+        script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
+        script_kick = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua"
     })
 end
 
@@ -64,10 +74,45 @@ function load_player(x, y)
     return player
 end
 
+function get_players_including_disabled()
+    return EntityGetWithTag(MOD.player)
+end
+
 function get_players()
-    return table.filter(EntityGetWithTag(MOD.player), function(player)
-        return not EntityHasTag(player, MOD.disabled_by_fatal_damage)
+    return table.filter(get_players_including_disabled(), function(player)
+        local player_data = PlayerData(player)
+        return not player_data.dead
     end)
+end
+
+function is_player_enabled(player)
+    local player_data = PlayerData(player)
+    return not player_data.dead
+end
+
+function set_dead(player, dead)
+    local player_data = PlayerData(player)
+    EntitySetComponentIsEnabled(player, get_id(player_data.genome), not dead)
+    EntitySetComponentIsEnabled(player, get_id(player_data.damage_model), not dead)
+    if dead then
+        EntityRemoveTag(player, "hittable")
+        if player_data.controls ~= nil then
+            local controls_component = get_id(player_data.controls)
+            for k in pairs(ComponentGetMembers(controls_component) or {}) do
+                if k:find("mButtonDown") and not k:find("mButtonDownDelayLine") then
+                    ComponentSetValue2(controls_component, k, false)
+                end
+            end
+        end
+    else
+        EntityAddTag(player, "hittable")
+        GamePlayAnimation(player, "intro_stand_up", 2)
+        player_data.damage_model.hp = player_data.damage_model.max_hp
+        EntityInflictDamage(player, 0.04, "DAMAGE_PROJECTILE", "", "NONE", 0, 0)
+        player_data.damage_model.hp = player_data.damage_model.max_hp
+        GamePrint(GameTextGet("$log_coop_resurrected_player", player_data.user))
+    end
+    player_data.dead = dead
 end
 
 function perk_spawn_with_data(x, y, perk_data, script_item_picked_up)
@@ -108,4 +153,14 @@ function teleport(entity, from_x, from_y, to_x, to_y)
     EntityLoad("data/entities/particles/teleportation_source.xml", from_x, from_y)
     EntityLoad("data/entities/particles/teleportation_target.xml", to_x, to_y)
     GamePlaySound("data/audio/Desktop/misc.bank", "misc/teleport_use", to_x, to_y)
+end
+
+local max_id = 0x7FFFFFFF
+ids = {}
+function new_id(s)
+    if ids[s] == nil then
+        ids[s] = max_id
+        max_id = max_id - 1
+    end
+    return ids[s]
 end

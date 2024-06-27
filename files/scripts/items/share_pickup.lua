@@ -5,7 +5,7 @@ function item_pickup(entity_item, entity_pickupper, item_name)
     if filename == "data/entities/items/pickup/heart_fullhp_temple.xml" and ModSettingGet(MOD.share_temple_heart) or
         filename == "data/entities/items/pickup/spell_refresh.xml" and ModSettingGet(MOD.share_temple_refresh) then
         local players = get_players()
-        for _, player in ipairs(players) do
+        for i, player in ipairs(players) do
             if player ~= entity_pickupper then
                 local x, y = EntityGetTransform(player)
                 GamePickUpInventoryItem(player, EntityLoad(filename, x, y))

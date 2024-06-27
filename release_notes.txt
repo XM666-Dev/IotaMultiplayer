@@ -1,4 +1,9 @@
-﻿alpha0.5.3 #20240602
+﻿alpha0.5.4 #20240627
+-fix can't pick up items (exclude spells)
+-better perk share compatibility
+-add resurrect
+
+alpha0.5.3 #20240602
 -fix autoaim target player
 -better autoaim toggle
 -better compatibility

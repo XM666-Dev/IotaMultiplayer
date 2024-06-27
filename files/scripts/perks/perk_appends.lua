@@ -1,7 +1,22 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
     dofile_once("mods/iota_multiplayer/lib.lua")
 
-    local function new_perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
+    local old_perk_pickup = perk_pickup
+    function _G.perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
+        local spawn = false
+        local x, y = EntityGetTransform(entity_who_picked)
+        local perk_stats = EntityGetInRadiusWithTag(x, y, 200, MOD.perk_stats)[1]
+        local perk_stats_data
+        local mod_table = ModAccessorTable({})
+        if ModSettingGet(MOD.share_temple_perk) and EntityHasTag(entity_item, MOD.temple_perk) and perk_stats ~= nil then
+            perk_stats_data = AccessorTable({}, { spawn_count = EntityVariableAccessor(perk_stats, MOD.spawn_count, "value_int", 1) })
+            spawn = perk_stats_data.spawn_count < mod_table.max_user
+        end
+        if not spawn then
+            old_perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
+            return
+        end
+        perk_stats_data.spawn_count = perk_stats_data.spawn_count + 1
         -- fetch perk info ---------------------------------------------------
 
         local no_perk_entity = no_perk_entity_ or false
@@ -153,43 +168,35 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
             disable_reroll = true
         end
 
-        local accessor_table = ModAccessorTable({}) --append
-        local perk_stats = EntityGetClosestWithTag(pos_x, pos_y, MOD.perk_stats)
-        local respawn = ModSettingGet(MOD.share_temple_perk) and is_vaild(perk_stats)
-        local respawn_count = respawn and EntityVariableAccessor(perk_stats, MOD.respawn_count, FIELD_INT)
-
         -- remove all perk items (also this one!) ----------------------------
         if kill_other_perks then
+            --#region
+            --[[
             local perk_destroy_chance = tonumber(GlobalsGetValue("TEMPLE_PERK_DESTROY_CHANCE", "100"))
             SetRandomSeed(pos_x, pos_y)
 
-            if (Random(1, 100) <= perk_destroy_chance or respawn and respawn_count.get() > 0) then --append
-                -- removes all the perks
-                local all_perks = EntityGetWithTag("perk")
-                disable_reroll = true
+            if (Random(1, 100) <= perk_destroy_chance) then
+            ]] --#endregion
+            -- removes all the perks
+            local all_perks = EntityGetWithTag("perk")
+            disable_reroll = true
 
-                if (#all_perks > 0) then
-                    for i, entity_perk in ipairs(all_perks) do
-                        if entity_perk ~= entity_item then
-                            EntityKill(entity_perk)
-                        end
+            if (#all_perks > 0) then
+                for i, entity_perk in ipairs(all_perks) do
+                    if entity_perk ~= entity_item then
+                        EntityKill(entity_perk)
                     end
                 end
             end
+            --#region
+            --[[
+            end
+            ]] --#endregion
         end
 
-        if respawn and respawn_count.get() < accessor_table.max_user - 1 then --append
-            if disable_reroll then
-                respawn_count.set(respawn_count.get() + 1)
-                local x, y = EntityGetTransform(perk_stats)
-                perk_spawn_many(x - 30, y)
-                for _, perk in ipairs(EntityGetInRadiusWithTag(x, y, 30, "perk")) do
-                    EntityAddTag(perk, MOD.temple_perk)
-                end
-            else
-                EntityLoad("mods/iota_multiplayer/files/entities/buildings/perk_respawn.xml", pos_x, pos_y)
-            end
-        elseif disable_reroll then
+        --#region
+        --[[
+        if disable_reroll then
             for i, rid in ipairs(rerolls) do
                 local reroll_comp = EntityGetFirstComponent(rid, "ItemCostComponent")
 
@@ -208,17 +215,17 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
                 EntitySetComponentsWithTagEnabled(rid, "perk_reroll_disable", false)
             end
         end
+        ]] --#endregion
 
         if (no_perk_entity == false) then
             EntityKill(entity_item) -- entity item should always be killed, hence we don't kill it in the above loop
         end
-    end
-
-    local old_item_pickup = item_pickup
-    function _G.item_pickup(entity_item, entity_who_picked, item_name)
-        local old_perk_pickup = perk_pickup
-        _G.perk_pickup = EntityHasTag(entity_item, MOD.temple_perk) and new_perk_pickup or perk_pickup
-        old_item_pickup(entity_item, entity_who_picked, item_name)
-        _G.perk_pickup = old_perk_pickup
+        --#region
+        local x, y = EntityGetTransform(perk_stats)
+        perk_spawn_many(x - 30, y)
+        for i, perk in ipairs(EntityGetInRadiusWithTag(x, y, 30, "perk")) do
+            EntityAddTag(perk, MOD.temple_perk)
+        end
+        --#endregion
     end
 end)
