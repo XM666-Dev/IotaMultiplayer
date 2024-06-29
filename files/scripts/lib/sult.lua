@@ -20,6 +20,17 @@ function AccessorTable(t, accessors)
     })
 end
 
+function Data(t, accessors)
+    return setmetatable(t, {
+        __index = function(t, k)
+            return (accessors[k] or rawget)(t, k)
+        end,
+        __newindex = function(t, k, v)
+            (accessors[k] or rawset)(t, k, v)
+        end
+    })
+end
+
 function EntityVariableAccessor(entity, name, field, value)
     local variable = get_variable_storage_component_or_add(entity, name, field, value)
     return {
@@ -301,6 +312,14 @@ end
 
 function math.round(x)
     return math.floor(x + 0.5)
+end
+
+function lerp(from, to, weight)
+    return from + (to - from) * weight
+end
+
+function lerp_clamped(from, to, weight)
+    return lerp(from, to, clamp(weight, 0, 1))
 end
 
 --#endregion

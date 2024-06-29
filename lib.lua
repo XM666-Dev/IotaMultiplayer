@@ -12,7 +12,7 @@ function ModAccessorTable(t)
         camera_centered_player = TagEntityAccessor(MOD.camera_centered_player, is_player_enabled),
         previous_camera_centered_player = TagEntityAccessor(MOD.previous_camera_centered_player),
         max_user = EntityVariableAccessor(world_state, MOD.max_user, "value_int"),
-        money = EntityVariableAccessor(world_state, MOD.money, "value_int")
+        player_positions = EntityVariableAccessor(world_state, MOD.player_positions, "value_string")
     })
 end
 
@@ -28,6 +28,7 @@ function PlayerData(player)
         damage_model = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "DamageModelComponent")),
         lukki_disable_sprite = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "SpriteComponent", "lukki_disable")),
         genome = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "GenomeDataComponent")),
+        character_data = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "CharacterDataComponent")),
         get_arm_r = function(self)
             local children = get_children(player)
             return children[table.find(children, function(child)

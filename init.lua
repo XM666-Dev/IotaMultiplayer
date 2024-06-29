@@ -4,6 +4,7 @@
 dofile_once("mods/iota_multiplayer/lib.lua")
 
 ModLuaFileAppend("mods/mnee/bindings.lua", "mods/iota_multiplayer/mnee.lua")
+ModLuaFileAppend("data/scripts/biomes/mountain/mountain_left_entrance.lua", "mods/iota_multiplayer/files/scripts/biomes/mountain/mountain_left_entrance_appends.lua")
 ModLuaFileAppend("data/scripts/biomes/temple_altar.lua", "mods/iota_multiplayer/files/scripts/biomes/temple_altar_appends.lua")
 ModLuaFileAppend("data/scripts/perks/perk.lua", "mods/iota_multiplayer/files/scripts/perks/perk_appends.lua")
 
@@ -12,6 +13,12 @@ append_translations("mods/iota_multiplayer/files/translations.csv")
 function OnWorldInitialized()
     world_initialized = true
     ModAccessorTable(_G)
+    local player_positions_list = deserialize(player_positions)
+    if type(player_positions_list) == "table" then
+        for i, pos in ipairs(player_positions_list) do
+            EntityKill(EntityLoad("mods/iota_multiplayer/files/entities/buildings/keep_alive.xml", unpack(pos)))
+        end
+    end
 end
 
 function OnPlayerSpawned(player)
@@ -25,11 +32,6 @@ function OnPlayerSpawned(player)
     for i = 1, math.round(ModSettingGet(MOD.player_num)) - 1 do
         load_player(x, y)
     end
-    perk_spawn_with_data(x, y, {
-        ui_name = "$action_autoaim",
-        ui_description = "$actiondesc_autoaim",
-        perk_icon = "data/ui_gfx/gun_actions/autoaim.png"
-    }, "mods/iota_multiplayer/files/scripts/perks/autoaim_pickup.lua")
 end
 
 function update_controls()
@@ -209,17 +211,17 @@ function update_camera()
             camera_centered_player_data.shooter().mSmoothedAimingVector = previous_camera_centered_player_data.shooter().mSmoothedAimingVector
             camera_centered_player_data.shooter().mDesiredCameraPos = previous_camera_centered_player_data.shooter().mDesiredCameraPos
         end
-        local players_including_disabled = get_players_including_disabled()
-        for i, player in ipairs(players_including_disabled) do
-            local player_data = PlayerData(player)
-            if player_data.listener ~= nil then
-                EntitySetComponentIsEnabled(player, get_id(player_data.listener), player == camera_centered_player)
-            end
-        end
         previous_camera_centered_player = camera_centered_player
     end
     if primary_player_data.shooter ~= nil and camera_centered_player_data.shooter ~= nil then
         primary_player_data.shooter().mDesiredCameraPos = camera_centered_player_data.shooter().mDesiredCameraPos
+    end
+    local players_including_disabled = get_players_including_disabled()
+    for i, player in ipairs(players_including_disabled) do
+        local player_data = PlayerData(player)
+        if player_data.listener ~= nil then
+            EntitySetComponentIsEnabled(player, get_id(player_data.listener), player == camera_centered_player)
+        end
     end
 end
 
@@ -275,13 +277,13 @@ function update_common()
         local gui_enabled_player_data = PlayerData(gui_enabled_player)
         for i, player in ipairs(players) do
             local player_data = PlayerData(player)
-            if player_data.wallet ~= nil and player ~= gui_enabled_player then
+            if player_data.wallet ~= nil and gui_enabled_player_data.wallet ~= nil and player ~= gui_enabled_player then
                 gui_enabled_player_data.wallet.money = gui_enabled_player_data.wallet.money + player_data.wallet.money - player_data.previous_money
             end
         end
         for i, player in ipairs(players) do
             local player_data = PlayerData(player)
-            if player_data.wallet ~= nil then
+            if player_data.wallet ~= nil and gui_enabled_player_data.wallet ~= nil then
                 player_data.wallet.money = gui_enabled_player_data.wallet.money
                 player_data.previous_money = player_data.wallet.money
             end
@@ -317,6 +319,14 @@ function update_common()
             EntityKill(player)
         end
     end
+    if world_initialized then
+        local player_positions_list = {}
+        for i, player in ipairs(players_including_disabled) do
+            local x, y = EntityGetTransform(player)
+            player_positions_list[i] = { x, y }
+        end
+        player_positions = serialize(player_positions_list)
+    end
 end
 
 gui = GuiCreate()
@@ -325,21 +335,44 @@ function draw_gui()
     if not world_initialized or max_user < 2 then
         return
     end
+    local function gui_image_nine_piece(gui, id, x, y, to_x, to_y, ...)
+        GuiImageNinePiece(gui, id, x, y, to_x - x, to_y - y, ...)
+    end
     GuiStartFrame(gui)
-    GuiOptionsAdd(gui, GUI_OPTION.Align_HorizontalCenter)
     local players = get_players()
     local players_including_disabled = get_players_including_disabled()
     if gui_enabled_player ~= nil then
+        GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
         GuiText(gui, 10, 25, "P" .. PlayerData(gui_enabled_player).user)
     end
     for i, player in ipairs(players) do
+        local player_data = PlayerData(player)
         local player_x, player_y = EntityGetTransform(player)
         local x, y = get_pos_on_screen(gui, player_x, player_y)
+        GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
         GuiText(gui, x, y + 5, "P" .. PlayerData(player).user)
+        local from_x, from_y = x + 8, y + 8
+        local to_x, to_y = from_x + 5, from_y + 5
+        GuiZSetForNextWidget(gui, 2)
+        gui_image_nine_piece(gui, new_id("bar_bg" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_bar_bg.png")
+        if player_data.character_data.mFlyingTimeLeft > 0 then
+            local from_x, from_y = from_x + 1, from_y + 1
+            local to_x, to_y = to_x - 1, to_y - 1
+            to_x = lerp_clamped(from_x, to_x, player_data.damage_model.hp / player_data.damage_model.max_hp)
+            GuiZSetForNextWidget(gui, 1)
+            gui_image_nine_piece(gui, new_id("health_bar" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_health_bar.png")
+        end
+        if player_data.character_data.mFlyingTimeLeft < player_data.character_data.fly_time_max then
+            local from_x, from_y = from_x + 1, from_y + 1
+            local to_x, to_y = to_x - 1, to_y - 1
+            to_y = lerp_clamped(to_y, from_y, player_data.character_data.mFlyingTimeLeft / player_data.character_data.fly_time_max)
+            GuiZSetForNextWidget(gui, 0)
+            gui_image_nine_piece(gui, new_id("flying_bar" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_flying_bar.png")
+        end
     end
     if #players < 1 and #players_including_disabled > 0 then
         local screen_w, screen_h = GuiGetScreenDimensions(gui)
-        local clicked = GuiButton(gui, new_id("give_up"), screen_w / 2, screen_h / 2, "$iota_multiplayer.menugiveup")
+        local clicked = GuiButton(gui, new_id("button_give_up"), screen_w / 2, screen_h / 2, "$iota_multiplayer.menugiveup")
         if clicked then
             give_up = true
         end

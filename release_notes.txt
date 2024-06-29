@@ -1,4 +1,10 @@
-﻿alpha0.5.4 #20240627
+﻿alpha0.6 #20240629
+-fix can't find player after restart
+-fix audio
+-add starting stuffs
+-add bar gui
+
+alpha0.5.4 #20240627
 -fix can't pick up items (exclude spells)
 -better perk share compatibility
 -add resurrect

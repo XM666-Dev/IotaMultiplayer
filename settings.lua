@@ -14,7 +14,7 @@ mod_settings_version = 1
 mod_settings = {
     GetterTable({
         id = "player_num",
-        value_default = 2,
+        value_default = 1,
         value_min = 1,
         value_max = 8,
         scope = MOD_SETTING_SCOPE_NEW_GAME

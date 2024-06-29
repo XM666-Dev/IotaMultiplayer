@@ -1,12 +1,12 @@
 dofile_once("mods/iota_multiplayer/lib.lua")
 
-function item_pickup(entity_item, entity_pickupper)
+function item_pickup(entity_item, entity_pickupper, item_name)
     EntityKill(entity_item)
     local x, y = EntityGetTransform(entity_item)
     perk_spawn_with_data(x, y, {
         ui_name = "$action_autoaim",
         ui_description = "$actiondesc_autoaim",
-        perk_icon = "data/ui_gfx/gun_actions/autoaim.png"
+        perk_icon = "mods/iota_multiplayer/files/items_gfx/perks/autoaim.png"
     }, "mods/iota_multiplayer/files/scripts/perks/autoaim_pickup.lua")
     local lua = table.filter(EntityGetComponentIncludingDisabled(entity_pickupper, "LuaComponent"), function(lua)
         return ComponentGetValue2(lua, "script_shot") == "mods/iota_multiplayer/files/scripts/perks/autoaim_shot.lua"
