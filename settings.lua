@@ -13,16 +13,6 @@ local mod_id = get_id(MOD)
 mod_settings_version = 1
 mod_settings = {
     GetterTable({
-        id = "player_num",
-        value_default = 1,
-        value_min = 1,
-        value_max = 8,
-        scope = MOD_SETTING_SCOPE_NEW_GAME
-    }, {
-        ui_name = function() return get_text("iota_multiplayer.setting_player_num") end,
-        ui_description = function() return get_text("iota_multiplayer.settingdesc_player_num") end
-    }),
-    GetterTable({
         category_id = "share",
         settings = {
             GetterTable({

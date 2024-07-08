@@ -6,10 +6,19 @@ MOD = ModData("iota_multiplayer")
 function ModAccessorTable(t)
     local world_state = GameGetWorldStateEntity()
     return AccessorTable(t, {
-        primary_player = TagEntityAccessor(MOD.primary_player),
+        primary_player = {
+            get = function()
+                return get_tag_entity(MOD.primary_player) --or get_tag_entity("polymorphed_player")
+            end,
+            set = function(v)
+                set_tag_entity(MOD.primary_player, v)
+            end
+        },
         gui_enabled_player = TagEntityAccessor(MOD.gui_enabled_player, is_player_enabled),
         previous_gui_enabled_player = TagEntityAccessor(MOD.previous_gui_enabled_player),
-        camera_centered_player = TagEntityAccessor(MOD.camera_centered_player, is_player_enabled),
+        camera_centered_player = TagEntityAccessor(MOD.camera_centered_player, function(player)
+            return --[[EntityHasTag(player, "polymorphed_player") or]] is_player_enabled(player) or #get_players() < 1
+        end),
         previous_camera_centered_player = TagEntityAccessor(MOD.previous_camera_centered_player),
         max_user = EntityVariableAccessor(world_state, MOD.max_user, "value_int"),
         player_positions = EntityVariableAccessor(world_state, MOD.player_positions, "value_string")
@@ -29,6 +38,7 @@ function PlayerData(player)
         lukki_disable_sprite = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "SpriteComponent", "lukki_disable")),
         genome = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "GenomeDataComponent")),
         character_data = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "CharacterDataComponent")),
+        inventory = ComponentData(EntityGetFirstComponentIncludingDisabled(player, "Inventory2Component")),
         get_arm_r = function(self)
             local children = get_children(player)
             return children[table.find(children, function(child)
@@ -46,6 +56,9 @@ function PlayerData(player)
         end,
         mnin_stick = function(self, name, dirty_mode, pressed_mode, is_vip, key_mode)
             return mnee.mnin_stick(MOD .. self.user, name, dirty_mode, pressed_mode, is_vip, key_mode)
+        end,
+        jpad_check = function(self, name)
+            return mnee.jpad_check(mnee.get_pbd(mnee.get_bindings()[MOD .. self.user][name]).main)
         end
     }, {
         user = EntityVariableAccessor(player, MOD.user, "value_int"),
@@ -63,9 +76,9 @@ function add_player(player)
     player_data.user = max_user
     EntityAddComponent2(player, "LuaComponent", {
         script_source_file = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
-        script_damage_received = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
         script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
-        script_kick = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua"
+        script_kick = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
+        script_damage_received = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua"
     })
 end
 

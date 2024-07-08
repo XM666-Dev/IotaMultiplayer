@@ -1,4 +1,12 @@
-﻿alpha0.6 #20240629
+﻿alpha0.6.1 #20240708
+-tweak gui
+-fix gamepad throwing
+-fix dead player controls
+-fix checknil
+-better camera
+-better autoaim
+
+alpha0.6 #20240629
 -fix can't find player after restart
 -fix audio
 -add starting stuffs
