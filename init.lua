@@ -46,100 +46,100 @@ function update_controls()
             goto continue
         end
 
-        player_data.controls.mButtonDownFire = player_data:mnin_bind("usewand", false, false, false, false, "guied")
-        if player_data:mnin_bind("usewand", false, true, false, false, "guied") then
+        player_data.controls.mButtonDownFire = player_data:mnin_bind("usewand", true, false, false, false, "guied")
+        if player_data:mnin_bind("usewand", true, true, false, false, "guied") then
             player_data.controls.mButtonFrameFire = get_frame_num_next()
         end
         if player_data.controls.mButtonDownFire then
             player_data.controls.mButtonLastFrameFire = get_frame_num_next()
         end
 
-        player_data.controls.mButtonDownFire2 = player_data:mnin_bind("sprayflask", false, false, false, false, "guied")
-        if player_data:mnin_bind("sprayflask", false, true, false, false, "guied") then
+        player_data.controls.mButtonDownFire2 = player_data:mnin_bind("sprayflask", true, false, false, false, "guied")
+        if player_data:mnin_bind("sprayflask", true, true, false, false, "guied") then
             player_data.controls.mButtonFrameFire2 = get_frame_num_next()
         end
 
-        local throw, throw_gone, throw_jpad = player_data:mnin_bind("throw", false, false, false, false, "guied")
+        local throw, throw_gone, throw_jpad = player_data:mnin_bind("throw", true, false, false, false, "guied")
         player_data.controls.mButtonDownThrow = throw and not (throw_jpad and player_data:is_inventory_open())
-        if player_data:mnin_bind("throw", false, true, false, false, "guied") and player_data.controls.mButtonDownThrow then
+        if player_data:mnin_bind("throw", true, true, false, false, "guied") and player_data.controls.mButtonDownThrow then
             player_data.controls.mButtonFrameThrow = get_frame_num_next()
         end
 
-        local interact, interact_gone, interact_jpad = player_data:mnin_bind("interact")
+        local interact, interact_gone, interact_jpad = player_data:mnin_bind("interact", true)
         player_data.controls.mButtonDownInteract = interact and not (interact_jpad and player_data:is_inventory_open())
-        if player_data:mnin_bind("interact", false, true) and player_data.controls.mButtonDownInteract then
+        if player_data:mnin_bind("interact", true, true) and player_data.controls.mButtonDownInteract then
             player_data.controls.mButtonFrameInteract = get_frame_num_next()
         end
 
-        local left, left_gone, left_jpad = player_data:mnin_bind("left")
+        local left, left_gone, left_jpad = player_data:mnin_bind("left", true)
         player_data.controls.mButtonDownLeft = left and not (left_jpad and player_data:is_inventory_open())
-        if player_data:mnin_bind("left", false, true) and player_data.controls.mButtonDownLeft then
+        if player_data:mnin_bind("left", true, true) and player_data.controls.mButtonDownLeft then
             player_data.controls.mButtonFrameLeft = get_frame_num_next()
         end
 
-        local right, right_gone, right_jpad = player_data:mnin_bind("right")
+        local right, right_gone, right_jpad = player_data:mnin_bind("right", true)
         player_data.controls.mButtonDownRight = right and not (right_jpad and player_data:is_inventory_open())
-        if player_data:mnin_bind("right", false, true) and player_data.controls.mButtonDownRight then
+        if player_data:mnin_bind("right", true, true) and player_data.controls.mButtonDownRight then
             player_data.controls.mButtonFrameRight = get_frame_num_next()
         end
 
-        local up, up_gone, up_jpad = player_data:mnin_bind("up")
+        local up, up_gone, up_jpad = player_data:mnin_bind("up", true)
         player_data.controls.mButtonDownUp = up and not (up_jpad and player_data:is_inventory_open())
-        if player_data:mnin_bind("up", false, true) and player_data.controls.mButtonDownUp then
+        if player_data:mnin_bind("up", true, true) and player_data.controls.mButtonDownUp then
             player_data.controls.mButtonFrameUp = get_frame_num_next()
         end
 
-        local down, down_gone, down_jpad = player_data:mnin_bind("down")
+        local down, down_gone, down_jpad = player_data:mnin_bind("down", true)
         player_data.controls.mButtonDownDown = down and not (down_jpad and player_data:is_inventory_open())
-        if player_data:mnin_bind("down", false, true) and player_data.controls.mButtonDownDown then
+        if player_data:mnin_bind("down", true, true) and player_data.controls.mButtonDownDown then
             player_data.controls.mButtonFrameDown = get_frame_num_next()
         end
 
-        player_data.controls.mButtonDownFly = player_data:mnin_bind("up")
-        if player_data:mnin_bind("up", false, true) then
+        player_data.controls.mButtonDownFly = player_data:mnin_bind("up", true)
+        if player_data:mnin_bind("up", true, true) then
             player_data.controls.mButtonFrameFly = get_frame_num_next()
         end
 
-        player_data.controls.mButtonDownChangeItemR = player_data:mnin_bind("itemnext")
-        if player_data:mnin_bind("itemnext", false, true) then
+        player_data.controls.mButtonDownChangeItemR = player_data:mnin_bind("itemnext", true)
+        if player_data:mnin_bind("itemnext", true, true) then
             player_data.controls.mButtonFrameChangeItemR = get_frame_num_next()
             player_data.controls.mButtonCountChangeItemR = 1
         else
             player_data.controls.mButtonCountChangeItemR = 0
         end
 
-        player_data.controls.mButtonDownChangeItemL = player_data:mnin_bind("itemprev")
-        if player_data:mnin_bind("itemprev", false, true) then
+        player_data.controls.mButtonDownChangeItemL = player_data:mnin_bind("itemprev", true)
+        if player_data:mnin_bind("itemprev", true, true) then
             player_data.controls.mButtonFrameChangeItemL = get_frame_num_next()
             player_data.controls.mButtonCountChangeItemL = 1
         else
             player_data.controls.mButtonCountChangeItemL = 0
         end
 
-        player_data.controls.mButtonDownInventory = player_data:mnin_bind("inventory")
-        if player_data:mnin_bind("inventory", false, true) then
+        player_data.controls.mButtonDownInventory = player_data:mnin_bind("inventory", true)
+        if player_data:mnin_bind("inventory", true, true) then
             player_data.controls.mButtonFrameInventory = get_frame_num_next()
             gui_enabled_player = player
         end
 
-        player_data.controls.mButtonDownDropItem = player_data:mnin_bind("dropitem") and player_data:is_inventory_open()
-        if player_data:mnin_bind("dropitem", false, true) and player_data.controls.mButtonDownDropItem then
+        player_data.controls.mButtonDownDropItem = player_data:mnin_bind("dropitem", true) and player_data:is_inventory_open()
+        if player_data:mnin_bind("dropitem", true, true) and player_data.controls.mButtonDownDropItem then
             player_data.controls.mButtonFrameDropItem = get_frame_num_next()
         end
 
-        local kick, kick_gone, kick_jpad = player_data:mnin_bind("kick")
+        local kick, kick_gone, kick_jpad = player_data:mnin_bind("kick", true)
         player_data.controls.mButtonDownKick = kick and not (kick_jpad and player_data:is_inventory_open())
-        if player_data:mnin_bind("kick", false, true) and player_data.controls.mButtonDownKick then
+        if player_data:mnin_bind("kick", true, true) and player_data.controls.mButtonDownKick then
             player_data.controls.mButtonFrameKick = get_frame_num_next()
         end
 
-        player_data.controls.mButtonDownLeftClick = mnee.mnin_key("mouse_left", false, false, false, "guied") and player == primary_player
-        if mnee.mnin_key("mouse_left", false, true, false, "guied") and player_data.controls.mButtonDownLeftClick then
+        player_data.controls.mButtonDownLeftClick = mnee.mnin_key("mouse_left", false, false, "guied") and player == primary_player
+        if mnee.mnin_key("mouse_left", true, false, "guied") and player_data.controls.mButtonDownLeftClick then
             player_data.controls.mButtonFrameLeftClick = get_frame_num_next()
         end
 
-        player_data.controls.mButtonDownRightClick = mnee.mnin_key("mouse_right", false, false, false, "guied") and player == primary_player
-        if mnee.mnin_key("mouse_right", false, true, false, "guied") and player_data.controls.mButtonDownRightClick then
+        player_data.controls.mButtonDownRightClick = mnee.mnin_key("mouse_right", false, false, "guied") and player == primary_player
+        if mnee.mnin_key("mouse_right", true, false, "guied") and player_data.controls.mButtonDownRightClick then
             player_data.controls.mButtonFrameRightClick = get_frame_num_next()
         end
 

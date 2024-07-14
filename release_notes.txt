@@ -1,4 +1,8 @@
-﻿alpha0.6.1 #20240708
+﻿alpha0.6.2 #20240714
+-steam fix
+-fix key binds
+
+alpha0.6.1 #20240708
 -tweak gui
 -fix gamepad throwing
 -fix dead player controls

@@ -48,17 +48,17 @@ function PlayerData(player)
         is_inventory_open = function(self)
             return self.gui and self.gui.mActive
         end,
-        mnin_bind = function(self, name, dirty_mode, pressed_mode, is_vip, loose_mode, key_mode)
-            return mnee.mnin_bind(MOD .. self.user, name, dirty_mode, pressed_mode, is_vip, loose_mode, key_mode)
+        mnin_bind = function(self, bind_id, dirty_mode, pressed_mode, is_vip, strict_mode, inmode)
+            return mnee.mnin_bind(MOD .. self.user, bind_id, dirty_mode, pressed_mode, is_vip, strict_mode, inmode)
         end,
-        mnin_axis = function(self, name, dirty_mode, pressed_mode, is_vip, key_mode)
-            return mnee.mnin_axis(MOD .. self.user, name, dirty_mode, pressed_mode, is_vip, key_mode)
+        mnin_axis = function(self, bind_id, is_alive, pressed_mode, is_vip, inmode)
+            return mnee.mnin_axis(MOD .. self.user, bind_id, is_alive, pressed_mode, is_vip, inmode)
         end,
-        mnin_stick = function(self, name, dirty_mode, pressed_mode, is_vip, key_mode)
-            return mnee.mnin_stick(MOD .. self.user, name, dirty_mode, pressed_mode, is_vip, key_mode)
+        mnin_stick = function(self, bind_id, pressed_mode, is_vip, inmode)
+            return mnee.mnin_stick(MOD .. self.user, bind_id, pressed_mode, is_vip, inmode)
         end,
-        jpad_check = function(self, name)
-            return mnee.jpad_check(mnee.get_pbd(mnee.get_bindings()[MOD .. self.user][name]).main)
+        jpad_check = function(self, bind_id)
+            return mnee.jpad_check(mnee.get_pbd(mnee.get_bindings()[MOD .. self.user][bind_id]).main)
         end
     }, {
         user = EntityVariableAccessor(player, MOD.user, "value_int"),

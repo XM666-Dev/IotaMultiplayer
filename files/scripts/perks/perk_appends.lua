@@ -13,8 +13,7 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
             spawn = perk_stats_data.spawn_count < mod_table.max_user
         end
         if not spawn then
-            old_perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
-            return
+            return old_perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
         end
         perk_stats_data.spawn_count = perk_stats_data.spawn_count + 1
         -- fetch perk info ---------------------------------------------------
