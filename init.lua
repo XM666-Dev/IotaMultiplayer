@@ -195,7 +195,7 @@ end
 function update_camera()
     local players = get_players()
     local camera_centered_player_data = PlayerData(camera_centered_player)
-    if mnee.mnin_bind(get_id(MOD), "switch_player", false, true) or camera_centered_player == nil and player_spawned then
+    if mnee.mnin_bind(get_id(MOD), "switch_player", true, true) or camera_centered_player == nil and player_spawned then
         local entities = camera_centered_player ~= nil and table.filter(players, function(player)
             return PlayerData(player).user > camera_centered_player_data.user
         end) or {}
@@ -266,7 +266,7 @@ end
 function update_common()
     local players = get_players()
     local players_including_disabled = get_players_including_disabled()
-    if mnee.mnin_bind(get_id(MOD), "toggle_teleport", false, true) then
+    if mnee.mnin_bind(get_id(MOD), "toggle_teleport", true, true) then
         for i, player in ipairs(players) do
             if player ~= camera_centered_player then
                 local from_x, from_y = EntityGetTransform(player)
