@@ -1,22 +1,5 @@
 <Mod
     name="Iota Multiplayer"
-    description="Iota Multiplayer provides local multiplayer mode for users. Users can control multiple players with gamepad/keyboard on a same PC.
-If you want remote multiplayer, you can use Parsec to remote control other ones' PC. Your input will be transmitted to their PC, and their screen will be transmitted to your screen.
-
-To use this mod:
-1. In options, set the Gamepad as Auto-detect, that allows players using both gamepad/mouse to operate their guis.
-2. Start a new run, pick up 'CO-OP!' icon and you can see extra players are spawned. Use gamepad to control them. Interact with 'Auto-Aim' to toggle it.
-3. Press G to switch gui/camera in players. Press T to make all players teleported to current player. Edit their key binding in M-Néé Panel.
-4. Money, temple hearts, spell refreshers are shared, if a player pick up one, other players will get one too.
-
-To play well, you may need edit the key bindings for other players (or some utility key bindings):
-1. Left Ctrl + M to open M-Néé panel.
-2. Select the binding set.
-3. Rebind them.
-
-For more info see https://noita.wiki.gg/wiki/Mod:Iota_Multiplayer"
     tags="gameplay,game modes"
-    dont_upload_folders=""
-    dont_upload_files=""
 >
 </Mod>
