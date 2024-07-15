@@ -1,0 +1,11 @@
+<Mod
+    name="Iota Multiplayer"
+    description="
+        Noita local multiplayer mode.
+        For more info see https://noita.wiki.gg/wiki/Mod:Iota_Multiplayer
+    "
+    tags="gameplay,game modes"
+    dont_upload_folders=""
+    dont_upload_files=""
+>
+</Mod>
