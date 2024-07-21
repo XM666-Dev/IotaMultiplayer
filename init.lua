@@ -11,6 +11,8 @@ ModLuaFileAppend("data/scripts/perks/perk.lua", "mods/iota_multiplayer/files/scr
 
 append_translations("mods/iota_multiplayer/files/translations.csv")
 
+local gui = GuiCreate()
+
 if GameGetWorldStateEntity() == 0 then
     ModSettingSet("iota_multiplayer.camera_zoom", ModSettingGetNextValue("iota_multiplayer.camera_zoom") or 1)
 end
@@ -376,7 +378,6 @@ local function update_common()
     end
 end
 
-local gui = GuiCreate()
 local function gui_image_nine_piece(gui, id, x, y, to_x, to_y, ...)
     GuiImageNinePiece(gui, id, x, y, to_x - x, to_y - y, ...)
 end
