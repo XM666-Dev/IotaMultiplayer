@@ -16,8 +16,8 @@ end
 
 function damage_about_to_be_received(damage, x, y, entity_thats_responsible, critical_hit_chance)
     local this = GetUpdatedEntityID()
-    if validate_entity(entity_thats_responsible) and entity_thats_responsible ~= this and EntityHasTag(entity_thats_responsible, MOD.player) then
-        damage = not ModSettingGet(MOD.friendly_fire_kick) and add_blocker(entity_thats_responsible, this) and 0 or damage * ModSettingGet(MOD.friendly_fire_percentage)
+    if validate_entity(entity_thats_responsible) and entity_thats_responsible ~= this and EntityHasTag(entity_thats_responsible, "iota_multiplayer.player") then
+        damage = not ModSettingGet("iota_multiplayer.friendly_fire_kick") and add_blocker(entity_thats_responsible, this) and 0 or damage * ModSettingGet("iota_multiplayer.friendly_fire_percentage")
     end
     return damage, critical_hit_chance
 end
@@ -32,8 +32,9 @@ end
 function damage_received(damage, message, entity_thats_responsible, is_fatal, projectile_thats_responsible)
     if is_fatal then
         local this = GetUpdatedEntityID()
-        local this_data = PlayerData(this)
-        this_data.last_damage_message = message
-        this_data.last_damage_entity_thats_responsible = entity_thats_responsible
+        local this_data = Player(this)
+        this_data.damage_frame = GameGetFrameNum()
+        this_data.damage_message = message
+        this_data.damage_entity_thats_responsible = entity_thats_responsible
     end
 end

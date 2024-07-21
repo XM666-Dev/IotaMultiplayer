@@ -1,11 +1,11 @@
 dofile_once("mods/iota_multiplayer/lib.lua")
 
-mneedata[get_id(MOD)] = {
+mneedata.iota_multiplayer = {
     name = "$iota_multiplayer.bindings_common",
     desc = "$iota_multiplayer.bindingsdesc_common"
 }
 
-bindings[get_id(MOD)] = {
+bindings.iota_multiplayer = {
     switch_player = {
         order_id = "a",
         name = "$iota_multiplayer.binding_switch_player",
@@ -26,7 +26,7 @@ for i = 1, 8 do
     local function get_player_bindingdesc(param)
         return GameTextGet("$iota_multiplayer.bindingdesc_player", tostring(i), GameTextGet(param))
     end
-    mneedata[MOD .. i] = {
+    mneedata["iota_multiplayer" .. i] = {
         name = function()
             return GameTextGet("$iota_multiplayer.bindings_player", tostring(i))
         end,
@@ -34,11 +34,10 @@ for i = 1, 8 do
             return GameTextGet("$iota_multiplayer.bindingsdesc_player", tostring(i))
         end,
         is_hidden = function()
-            ModAccessorTable(_G)
-            return max_user < i
+            return i > mod.max_user
         end
     }
-    bindings[MOD .. i] = {
+    bindings["iota_multiplayer" .. i] = {
         up = {
             order_id = "a",
             name = "$controls_up",

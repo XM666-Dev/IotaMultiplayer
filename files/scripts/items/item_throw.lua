@@ -8,8 +8,8 @@ end
 
 function throw_item(from_x, from_y, to_x, to_y)
     local last_root = GetValueInteger("last_root", 0)
-    if EntityHasTag(last_root, MOD.player) and not flag then
-        local player_data = PlayerData(last_root)
+    if EntityHasTag(last_root, "iota_multiplayer.player") and not flag then
+        local player_data = Player(last_root)
         local inventory_jpad = player_data:jpad_check("inventory")
         if inventory_jpad and player_data:is_inventory_open() then
             local this = GetUpdatedEntityID()

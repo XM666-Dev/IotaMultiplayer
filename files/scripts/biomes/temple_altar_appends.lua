@@ -25,7 +25,7 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
 	function _G.spawn_all_perks(x, y)
 		old_spawn_all_perks(x, y)
 		for i, perk in ipairs(EntityGetInRadiusWithTag(x + 30, y, 30, "perk")) do
-			EntityAddTag(perk, MOD.temple_perk)
+			EntityAddTag(perk, "iota_multiplayer.temple_perk")
 		end
 		EntityLoad("mods/iota_multiplayer/files/entities/buildings/perk_stats.xml", x + 30, y)
 	end

@@ -1,18 +1,18 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
     dofile_once("mods/iota_multiplayer/lib.lua")
 
+    local perk_stats_metatable = Metatable {
+        spawn_count = VariableAccessor("iota_multiplayer.spawn_count", "value_int", 1)
+    }
+    local function PerkStats(perk_stats)
+        return setmetatable({ id = perk_stats }, perk_stats_metatable)
+    end
     local old_perk_pickup = perk_pickup
     function _G.perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
-        local spawn = false
         local x, y = EntityGetTransform(entity_who_picked)
-        local perk_stats = EntityGetInRadiusWithTag(x, y, 200, MOD.perk_stats)[1]
-        local perk_stats_data
-        local mod_table = ModAccessorTable({})
-        if ModSettingGet(MOD.share_temple_perk) and EntityHasTag(entity_item, MOD.temple_perk) and perk_stats ~= nil then
-            perk_stats_data = AccessorTable({}, { spawn_count = EntityVariableAccessor(perk_stats, MOD.spawn_count, "value_int", 1) })
-            spawn = perk_stats_data.spawn_count < mod_table.max_user
-        end
-        if not spawn then
+        local perk_stats = EntityGetInRadiusWithTag(x, y, 200, "iota_multiplayer.perk_stats")[1]
+        local perk_stats_data = PerkStats(perk_stats)
+        if not (ModSettingGet("iota_multiplayer.share_temple_perk") and EntityHasTag(entity_item, "iota_multiplayer.temple_perk") and perk_stats ~= nil and perk_stats_data.spawn_count < mod.max_user) then
             return old_perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
         end
         perk_stats_data.spawn_count = perk_stats_data.spawn_count + 1
@@ -223,7 +223,7 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
         local x, y = EntityGetTransform(perk_stats)
         perk_spawn_many(x - 30, y)
         for i, perk in ipairs(EntityGetInRadiusWithTag(x, y, 30, "perk")) do
-            EntityAddTag(perk, MOD.temple_perk)
+            EntityAddTag(perk, "iota_multiplayer.temple_perk")
         end
         --#endregion
     end

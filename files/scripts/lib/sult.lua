@@ -2,119 +2,7 @@ dofile_once("data/scripts/lib/utilities.lua")
 
 --#region
 
-function AccessorTable(t, accessors)
-    return setmetatable(t, {
-        __index = function(t, k)
-            local accessor = accessors[k]
-            if accessor then
-                return accessor.get()
-            end
-        end,
-        __newindex = function(t, k, v)
-            local accessor = accessors[k]
-            if accessor then
-                return accessor.set(v)
-            end
-            rawset(t, k, v)
-        end
-    })
-end
-
-function Data(t, accessors)
-    return setmetatable(t, {
-        __index = function(t, k)
-            return (accessors[k] or rawget)(t, k)
-        end,
-        __newindex = function(t, k, v)
-            (accessors[k] or rawset)(t, k, v)
-        end
-    })
-end
-
-function EntityVariableAccessor(entity, name, field, value)
-    local variable = get_variable_storage_component_or_add(entity, name, field, value)
-    return {
-        get = function()
-            return ComponentGetValue2(variable, field)
-        end,
-        set = function(...)
-            ComponentSetValue2(variable, field, ...)
-        end
-    }
-end
-
-function TagEntityAccessor(tag, pred)
-    return {
-        get = function()
-            local entity = get_tag_entity(tag)
-            if pred then
-                return pred(entity) and entity or nil
-            end
-            return entity
-        end,
-        set = function(v)
-            set_tag_entity(tag, v)
-        end
-    }
-end
-
-function ComponentData(component)
-    local list_component_data = setmetatable({}, {
-        __index = function(t, k)
-            return { ComponentGetValue2(component, k) }
-        end,
-        __newindex = function(t, k, v)
-            ComponentSetValue2(component, k, unpack(v))
-        end
-    })
-    return component and setmetatable({}, {
-        id = component,
-        __index = function(t, k)
-            return ComponentGetValue2(component, k)
-        end,
-        __newindex = function(t, k, v)
-            ComponentSetValue2(component, k, v)
-        end,
-        __call = function(t, ...)
-            return list_component_data
-        end
-    })
-end
-
-function ModData(mod)
-    return setmetatable({}, {
-        id = mod,
-        __index = function(t, k)
-            return mod .. "." .. k
-        end,
-        __concat = function(t1, t2)
-            return mod .. t2
-        end
-    })
-end
-
---#endregion
-
---#region
-
-function get_variable_storage_component_or_add(entity, name, field, value)
-    return get_variable_storage_component(entity, name) or EntityAddComponent2(entity, "VariableStorageComponent", { name = name, [field] = value })
-end
-
-function get_tag_entity(tag)
-    return EntityGetWithTag(tag)[1]
-end
-
-function set_tag_entity(tag, entity)
-    for i, tagged_entity in ipairs(EntityGetWithTag(tag)) do
-        EntityRemoveTag(tagged_entity, tag)
-    end
-    EntityAddTag(entity, tag)
-end
-
---#endregion
-
---#region
+NUMERIC_CHARACTERS = "0123456789"
 
 function append_translations(filename)
     local common = "data/translations/common.csv"
@@ -125,20 +13,20 @@ function has_flag_run_or_add(flag)
     return GameHasFlagRun(flag) or GameAddFlagRun(flag)
 end
 
-function get_id(data)
-    return getmetatable(data).id
-end
-
 function validate_entity(entity)
     return entity and entity > 0 and entity or nil
 end
 
-function get_children(entity)
-    return EntityGetAllChildren(entity) or {}
+function get_children(...)
+    return EntityGetAllChildren(...) or {}
 end
 
 function get_inventory_items(entity)
     return GameGetAllInventoryItems(entity) or {}
+end
+
+function get_frame_num_next()
+    return GameGetFrameNum() + 1
 end
 
 function get_camera_corner()
@@ -159,11 +47,17 @@ function get_pos_on_screen(gui, x, y)
     return (x - camera_x) * zoom_x, (y - camera_y) * zoom_y
 end
 
-function get_frame_num_next()
-    return GameGetFrameNum() + 1
+local ids = {}
+local max_id = 0x7FFFFFFF
+function new_id(s)
+    local id = ids[s]
+    if id == nil then
+        id = max_id
+        ids[s] = id
+        max_id = id - 1
+    end
+    return id
 end
-
-local ModTextFileSetContent = ModTextFileSetContent
 
 function serialize(v)
     return (({
@@ -177,10 +71,11 @@ function serialize(v)
                 i = i + 1
             end
             return s .. "}"
-        end
+        end,
     })[type(v)] or tostring)(v)
 end
 
+local ModTextFileSetContent = ModTextFileSetContent
 function deserialize(s)
     ModTextFileSetContent("data/scripts/empty.lua", "return " .. s)
     local f, err = loadfile("data/scripts/empty.lua")
@@ -225,11 +120,9 @@ function SettingAccessor(id, filename, setting_date_filename, file_date_filename
             set_setting_date(get_setting_date() + 1)
             self.cache = v
             self.cache_date = get_setting_date()
-        end
+        end,
     }
 end
-
-NUMERIC_CHARACTERS = "0123456789"
 
 function get_language()
     return ({
@@ -245,15 +138,6 @@ function get_language()
         ["日本語"] = "jp",
         ["한국어"] = "ko",
     })[GameTextGet("$current_language")]
-end
-
-function GetterTable(t, getters)
-    return setmetatable(t, {
-        __index = function(t, k)
-            local getter = getters[k]
-            return getter and getter()
-        end
-    })
 end
 
 function debug_print(...)
@@ -279,12 +163,13 @@ function string.from(v)
                 i = i + 1
             end
             return s .. "}"
-        end
+        end,
     })[type(v)] or tostring)(v)
 end
 
 function string.asub(s, repl)
-    return s:gsub('(%g+)%s*=%s*(%b"")', repl)
+    --return s:gsub('(%g+)%s*=%s*(%b"")', repl)
+    return s:gsub('(%g+)%s*=%s*"(.-)"', repl)
 end
 
 function table.find(list, pred)
@@ -314,6 +199,14 @@ function table.iterate(list, comp, value)
     return value
 end
 
+function table.copy(t)
+    local result = {}
+    for k, v in pairs(t) do
+        result[k] = v
+    end
+    return result
+end
+
 function math.round(x)
     return math.floor(x + 0.5)
 end
@@ -331,3 +224,113 @@ function point_in_rectangle(x, y, left, up, right, down)
 end
 
 --#endregion
+
+function Metatable(accessors)
+    local getters = {}
+    for k, accessor in pairs(accessors) do
+        getters[k] = accessor.get
+    end
+    local setters = {}
+    for k, accessor in pairs(accessors) do
+        setters[k] = accessor.set
+    end
+    return {
+        __index = function(t, k)
+            return (getters[k] or rawget)(t, k)
+        end,
+        __newindex = function(t, k, v)
+            (setters[k] or rawset)(t, k, v)
+        end,
+    }
+end
+
+function Table(t, getters, setters)
+    return setmetatable(t, {
+        __index = function(t, k)
+            return (getters[k] or rawget)(t, k)
+        end,
+        __newindex = function(t, k, v)
+            (setters[k] or rawset)(t, k, v)
+        end,
+    })
+end
+
+function EntityAccessor(tag, pred)
+    return {
+        get = function(t, k)
+            local entity = EntityGetWithTag(tag)[1]
+            return (pred == nil or pred(entity)) and entity or nil
+        end,
+        set = function(t, k, v)
+            for i, entity in ipairs(EntityGetWithTag(tag)) do
+                EntityRemoveTag(entity, tag)
+            end
+            EntityAddTag(v, tag)
+        end,
+    }
+end
+
+local metatable = {
+    __index = function(t, k)
+        return { ComponentGetValue2(t._id, k) }
+    end,
+    __newindex = function(t, k, v)
+        ComponentSetValue2(t._id, k, unpack(v))
+    end,
+}
+local component_metatable = {
+    __index = function(t, k)
+        return ComponentGetValue2(t._id, k)
+    end,
+    __newindex = function(t, k, v)
+        ComponentSetValue2(t._id, k, v)
+    end,
+    __call = function(t, ...)
+        return setmetatable(t, metatable)
+    end,
+}
+function ComponentAccessor(f, ...)
+    local args = { ... }
+    local self = {}
+    self.get = function(t, k)
+        local cached = t[self]
+        if cached == nil then
+            local entity = t.id
+            local component = f(entity, unpack(args))
+            if component == nil then
+                return nil
+            end
+            cached = { _id = component }
+            t[self] = cached
+        end
+        return setmetatable(cached, component_metatable)
+    end
+    return self
+end
+
+function VariableAccessor(tag, field, default)
+    local self = {}
+    self.get = function(t, k)
+        local component = t[self]
+        if component == nil then
+            local entity = t.id
+            component = EntityGetFirstComponent(entity, "VariableStorageComponent", tag) or EntityAddComponent2(entity, "VariableStorageComponent", { _tags = tag, [field] = default })
+            t[self] = component
+        end
+        return ComponentGetValue2(component, field)
+    end
+    self.set = function(t, k, v)
+        local component = t[self]
+        if component == nil then
+            local entity = t.id
+            component = EntityGetFirstComponent(entity, "VariableStorageComponent", tag) or EntityAddComponent2(entity, "VariableStorageComponent", { _tags = tag, [field] = default })
+            t[self] = component
+        end
+        ComponentSetValue2(component, field, v)
+    end
+    return self
+end
+
+function ConstantAccessor(value)
+    return { get = function() return value end }
+end

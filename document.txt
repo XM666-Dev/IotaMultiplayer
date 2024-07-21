@@ -15,3 +15,21 @@ AnimalAIComponent
 Entity checknil: ~= 0
 Component checknil: ~= nil
 Any checknil: ~= nil
+
+--PlayerData: 0.06 0.1
+--setmetatable: 0.0002
+--Player: 0.0004 0.006
+
+--Player read/write: 0.06
+--cull: 0.0014
+--Player read/write: 0.007
+--cull: 0.0014
+
+--tag: 0.003
+--name: 0.011
+
+GAMEPAD_ANALOG_FLYING_HIGH="0.95"
+GAMEPAD_ANALOG_FLYING_LOW="0.1"
+
+不要在settings.lua里多次mod_settings = {...}，这会导致未知问题
+检测游戏是否完全重启，可以用GameGetWorldStateEntity() == 0，因为在一场运行中进行新游戏的时候并不会完全重启，所以WorldState是不会被擦除的，如果点那个重新启动或者关游戏重进或者进入其他的存档就是完全重启，WorldState会被擦除

@@ -1,4 +1,10 @@
-﻿alpha0.6.2 #20240714
+﻿alpha0.7 #20240721
+-better give up order
+-better performance
+-controls fix
+-add camera zoom
+
+alpha0.6.2 #20240714
 -steam fix
 -fix key binds
 
