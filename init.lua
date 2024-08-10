@@ -34,9 +34,8 @@ end
 
 function OnWorldInitialized()
     world_initialized = true
-    local player_positions_list = deserialize(mod.player_positions)
-    if type(player_positions_list) == "table" then
-        for i, pos in ipairs(player_positions_list) do
+    if type(mod.player_positions) == "table" then
+        for i, pos in ipairs(mod.player_positions) do
             EntityKill(EntityLoad("mods/iota_multiplayer/files/entities/buildings/keep_alive.xml", unpack(pos)))
         end
     end
@@ -49,6 +48,31 @@ function OnPlayerSpawned(player)
         return
     end
     add_player(player)
+end
+
+local function update_player()
+    if type(mod.player_indexs) == "table" then
+        for i, v in ipairs(mod.player_indexs) do
+            local player, index, is_primary_player, is_gui_enabled_player, is_camera_centered_player = unpack(v)
+            local player_data = Player(player)
+            player_data.index = index
+            EntityAddTag(player, "iota_multiplayer.player")
+            if is_primary_player then
+                EntityAddTag(player, "iota_multiplayer.primary_player")
+            end
+            if is_gui_enabled_player then
+                EntityAddTag(player, "iota_multiplayer.gui_enabled_player")
+            end
+            if is_camera_centered_player then
+                EntityAddTag(player, "iota_multiplayer.camera_centered_player")
+            end
+            local ai = EntityGetFirstComponent(player, "AnimalAIComponent")
+            if ai ~= nil then
+                EntitySetComponentIsEnabled(player, ai, false)
+            end
+        end
+    end
+    mod.player_indexs = nil
 end
 
 local function is_pressed(a, b, buttoned)
@@ -76,6 +100,7 @@ local function update_controls()
         end
         if player_data.controls.mButtonDownFire then
             player_data.controls.mButtonLastFrameFire = get_frame_num_next()
+            shoot_projectile(player)
         end
 
         player_data.controls.mButtonDownFire2 = player_data:mnin_bind("sprayflask", true, false, false, false, "guied")
@@ -219,11 +244,11 @@ local function update_camera()
     local camera_centered_player_data = Player(mod.camera_centered_player)
     if mnee.mnin_bind("iota_multiplayer", "switch_player", true, true) or mod.camera_centered_player == nil and player_spawned then
         local entities = mod.camera_centered_player ~= nil and table.filter(players, function(player)
-            return Player(player).user > camera_centered_player_data.user
+            return Player(player).index > camera_centered_player_data.index
         end) or {}
         entities = #entities > 0 and entities or players
         mod.camera_centered_player = table.iterate(entities, function(a, b)
-            return b == nil or Player(a).user < Player(b).user
+            return b == nil or Player(a).index < Player(b).index
         end)
     end
     if mod.camera_centered_player ~= mod.previous_camera_centered_player then
@@ -237,8 +262,8 @@ local function update_camera()
         mod.previous_camera_centered_player = mod.camera_centered_player
     end
     local primary_player_data = Player(mod.primary_player)
-    if primary_player_data.shooter ~= nil and camera_centered_player_data.shooter ~= nil then
-        primary_player_data.shooter().mDesiredCameraPos = camera_centered_player_data.shooter().mDesiredCameraPos
+    if primary_player_data.shooter ~= nil then
+        primary_player_data.shooter().mDesiredCameraPos = camera_centered_player_data.shooter ~= nil and camera_centered_player_data.shooter().mDesiredCameraPos or { EntityGetTransform(mod.camera_centered_player) }
     end
     local players_including_disabled = get_players_including_disabled()
     for i, player in ipairs(players_including_disabled) do
@@ -336,7 +361,7 @@ local function update_common()
             add_script_item_throw(item)
         end
         if player_data.damage_model ~= nil then
-            player_data.damage_model.wait_for_kill_flag_on_death = mod.max_user > 1
+            player_data.damage_model.wait_for_kill_flag_on_death = mod.max_index > 1
             if player_data.damage_model.hp < 0 then
                 set_dead(player, true)
             end
@@ -369,12 +394,12 @@ local function update_common()
         end
     end
     if world_initialized then
-        local player_positions_list = {}
+        local player_positions = {}
         for i, player in ipairs(players_including_disabled) do
             local x, y = EntityGetTransform(player)
-            player_positions_list[i] = { x, y }
+            player_positions[i] = { x, y }
         end
-        mod.player_positions = serialize(player_positions_list)
+        mod.player_positions = player_positions
     end
 end
 
@@ -382,14 +407,14 @@ local function gui_image_nine_piece(gui, id, x, y, to_x, to_y, ...)
     GuiImageNinePiece(gui, id, x, y, to_x - x, to_y - y, ...)
 end
 local function update_gui_mod()
-    if not world_initialized or mod.max_user < 2 then
+    if not world_initialized or mod.max_index < 2 then
         return
     end
     GuiStartFrame(gui)
     local gui_enabled_player_data = Player(mod.gui_enabled_player)
     if mod.gui_enabled_player ~= nil then
         GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
-        GuiText(gui, 10, 25, "P" .. gui_enabled_player_data.user)
+        GuiText(gui, 10, 25, "P" .. gui_enabled_player_data.index)
     end
     local players = get_players()
     for i, player in ipairs(players) do
@@ -399,7 +424,7 @@ local function update_gui_mod()
         local x, y = get_pos_on_screen(gui, player_x, player_y)
         GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
         GuiColorSetForNextWidget(gui, 1, 1, 1, gui_enabled_player_data.gui ~= nil and 1 - gui_enabled_player_data.gui.mBackgroundOverlayAlpha * 2 or 1)
-        GuiText(gui, x, y + 5, "P" .. player_data.user)
+        GuiText(gui, x, y + 5, "P" .. player_data.index)
 
         local from_x, from_y = x + 7.5, y + 7.5
         local to_x, to_y = from_x + 5, from_y + 5
@@ -426,10 +451,10 @@ local function update_gui_mod()
             gui_image_nine_piece(gui, new_id("flying_bar" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_flying_bar.png")
         end
     end
-    local players_including_disabled = get_players_including_disabled()
-    if #players < 1 and #players_including_disabled > 0 then
+    if #players < 1 then
         local screen_w, screen_h = GuiGetScreenDimensions(gui)
         GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
+        GuiOptionsAddForNextWidget(gui, GUI_OPTION.GamepadDefaultWidget)
         local clicked = GuiButton(gui, new_id("button_give_up"), screen_w / 2, screen_h / 2, "$iota_multiplayer.menugiveup")
         if clicked then
             give_up = true
@@ -438,6 +463,7 @@ local function update_gui_mod()
 end
 
 function OnWorldPreUpdate()
+    update_player()
     update_controls()
     update_camera()
     update_gui()

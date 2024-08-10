@@ -17,8 +17,8 @@ function validate_entity(entity)
     return entity and entity > 0 and entity or nil
 end
 
-function get_children(...)
-    return EntityGetAllChildren(...) or {}
+function get_children(entity, ...)
+    return EntityGetAllChildren(entity, ...) or {}
 end
 
 function get_inventory_items(entity)
@@ -65,10 +65,8 @@ function serialize(v)
         string = function(s) return ("%q"):format(s) end,
         table = function(t)
             local s = "{"
-            local i = 1
             for k, v in pairs(t) do
-                s = s .. "[" .. serialize(k) .. "]=" .. serialize(v) .. (i < #t and "," or "")
-                i = i + 1
+                s = s .. "[" .. serialize(k) .. "]=" .. serialize(v) .. ","
             end
             return s .. "}"
         end,
@@ -81,47 +79,6 @@ function deserialize(s)
     local f, err = loadfile("data/scripts/empty.lua")
     if f == nil then return f, err end
     return f()
-end
-
-function SettingAccessor(id, filename, setting_date_filename, file_date_filename)
-    if not ModDoesFileExist(setting_date_filename) then
-        ModTextFileSetContent(setting_date_filename, "1")
-    end
-    if not ModDoesFileExist(file_date_filename) then
-        ModTextFileSetContent(file_date_filename, "0")
-    end
-    local function get_setting_date()
-        return tonumber(ModTextFileGetContent(setting_date_filename))
-    end
-    local function set_setting_date(n)
-        ModTextFileSetContent(setting_date_filename, tostring(n))
-    end
-    local function get_file_date()
-        return tonumber(ModTextFileGetContent(file_date_filename))
-    end
-    local function set_file_date(n)
-        ModTextFileSetContent(file_date_filename, tostring(n))
-    end
-    return {
-        cache_date = 0,
-        get = function(self)
-            if self.cache_date < get_setting_date() then
-                if get_file_date() < get_setting_date() then
-                    ModTextFileSetContent(filename, "return " .. ModSettingGet(id))
-                    set_file_date(get_setting_date())
-                end
-                self.cache = loadfile(filename)()
-                self.cache_date = get_setting_date()
-            end
-            return self.cache
-        end,
-        set = function(self, v)
-            ModSettingSet(id, serialize(v))
-            set_setting_date(get_setting_date() + 1)
-            self.cache = v
-            self.cache_date = get_setting_date()
-        end,
-    }
 end
 
 function get_language()
@@ -142,8 +99,9 @@ end
 
 function debug_print(...)
     local s = ""
-    for i, v in ipairs({ ... }) do
-        s = s .. string.from(v)
+    local t = { ... }
+    for i, v in ipairs(t) do
+        s = s .. string.from(v) .. (i < #t and "," or "")
     end
     print(s)
     GamePrint(s)
@@ -168,7 +126,6 @@ function string.from(v)
 end
 
 function string.asub(s, repl)
-    --return s:gsub('(%g+)%s*=%s*(%b"")', repl)
     return s:gsub('(%g+)%s*=%s*"(.-)"', repl)
 end
 
@@ -333,4 +290,46 @@ end
 
 function ConstantAccessor(value)
     return { get = function() return value end }
+end
+
+function SerializedAccessor(accessor, filename, value_date_filename, file_date_filename)
+    if not ModDoesFileExist(value_date_filename) then
+        ModTextFileSetContent(value_date_filename, "1")
+    end
+    if not ModDoesFileExist(file_date_filename) then
+        ModTextFileSetContent(file_date_filename, "0")
+    end
+    local function get_value_date()
+        return tonumber(ModTextFileGetContent(value_date_filename))
+    end
+    local function set_value_date(n)
+        ModTextFileSetContent(value_date_filename, tostring(n))
+    end
+    local function get_file_date()
+        return tonumber(ModTextFileGetContent(file_date_filename))
+    end
+    local function set_file_date(n)
+        ModTextFileSetContent(file_date_filename, tostring(n))
+    end
+    local cache
+    local cache_date = 0
+    return {
+        get = function(t, k)
+            if cache_date < get_value_date() then
+                if get_file_date() < get_value_date() then
+                    ModTextFileSetContent(filename, "return " .. accessor.get(t, k))
+                    set_file_date(get_value_date())
+                end
+                cache = loadfile(filename)()
+                cache_date = get_value_date()
+            end
+            return cache
+        end,
+        set = function(t, k, v)
+            accessor.set(t, k, serialize(v))
+            set_value_date(get_value_date() + 1)
+            cache = v
+            cache_date = get_value_date()
+        end,
+    }
 end

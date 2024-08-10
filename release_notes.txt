@@ -1,4 +1,8 @@
-﻿alpha0.7.1 #20240721
+﻿alpha0.7.2 #20240810
+-polymorph fix
+-perk fix
+
+alpha0.7.1 #20240721
 -aim fix
 
 alpha0.7 #20240721

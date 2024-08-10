@@ -34,7 +34,7 @@ for i = 1, 8 do
             return GameTextGet("$iota_multiplayer.bindingsdesc_player", tostring(i))
         end,
         is_hidden = function()
-            return i > mod.max_user
+            return i > mod.max_index
         end
     }
     bindings["iota_multiplayer" .. i] = {

@@ -2,7 +2,7 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
     dofile_once("mods/iota_multiplayer/lib.lua")
 
     local perk_stats_metatable = Metatable {
-        spawn_count = VariableAccessor("iota_multiplayer.spawn_count", "value_int", 1)
+        spawn_count = VariableAccessor("iota_multiplayer.spawn_count", "value_int", 1),
     }
     local function PerkStats(perk_stats)
         return setmetatable({ id = perk_stats }, perk_stats_metatable)
@@ -10,9 +10,9 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
     local old_perk_pickup = perk_pickup
     function _G.perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
         local x, y = EntityGetTransform(entity_who_picked)
-        local perk_stats = EntityGetInRadiusWithTag(x, y, 200, "iota_multiplayer.perk_stats")[1]
+        local perk_stats = EntityGetInRadiusWithTag(x, y, 30, "iota_multiplayer.perk_stats")[1]
         local perk_stats_data = PerkStats(perk_stats)
-        if not (ModSettingGet("iota_multiplayer.share_temple_perk") and EntityHasTag(entity_item, "iota_multiplayer.temple_perk") and perk_stats ~= nil and perk_stats_data.spawn_count < mod.max_user) then
+        if not (ModSettingGet("iota_multiplayer.share_temple_perk") and perk_stats ~= nil and perk_stats_data.spawn_count < mod.max_index) then
             return old_perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
         end
         perk_stats_data.spawn_count = perk_stats_data.spawn_count + 1
@@ -132,7 +132,7 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
             {
                 name = perk_data.ui_name,
                 description = perk_data.ui_description,
-                icon_sprite_file = perk_data.ui_icon
+                icon_sprite_file = perk_data.ui_icon,
             })
 
         if (no_remove == false) then
@@ -222,9 +222,6 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
         --#region
         local x, y = EntityGetTransform(perk_stats)
         perk_spawn_many(x - 30, y)
-        for i, perk in ipairs(EntityGetInRadiusWithTag(x, y, 30, "perk")) do
-            EntityAddTag(perk, "iota_multiplayer.temple_perk")
-        end
         --#endregion
     end
 end)

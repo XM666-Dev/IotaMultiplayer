@@ -38,3 +38,16 @@ function damage_received(damage, message, entity_thats_responsible, is_fatal, pr
         this_data.damage_entity_thats_responsible = entity_thats_responsible
     end
 end
+
+function polymorphing_to(string_entity_we_are_about_to_polymorph_to)
+    local this_data = Player(string_entity_we_are_about_to_polymorph_to)
+    local player_indexs = mod.player_indexs or {}
+    table.insert(player_indexs, {
+        EntitiesGetMaxID() + 1,
+        this_data.index,
+        EntityHasTag(string_entity_we_are_about_to_polymorph_to, "iota_multiplayer.primary_player"),
+        EntityHasTag(string_entity_we_are_about_to_polymorph_to, "iota_multiplayer.gui_enabled_player"),
+        EntityHasTag(string_entity_we_are_about_to_polymorph_to, "iota_multiplayer.camera_centered_player"),
+    })
+    mod.player_indexs = player_indexs
+end
