@@ -1,21 +1,32 @@
-﻿alpha0.7.2 #20240810
+﻿alpha-0.7.4-20240817
+-fix polymorph
+-fix polymorph dead
+-fix polymorph aim
+-fix aim
+-fix aim cursor
+-better shader compatibility
+
+alpha-0.7.3-20240810
+-perk fix
+
+alpha-0.7.2-20240810
 -polymorph fix
 -perk fix
 
-alpha0.7.1 #20240721
+alpha-0.7.1-20240721
 -aim fix
 
-alpha0.7 #20240721
+alpha-0.7-20240721
 -better give up order
 -better performance
 -controls fix
 -add camera zoom
 
-alpha0.6.2 #20240714
+alpha-0.6.2-20240714
 -steam fix
 -fix key binds
 
-alpha0.6.1 #20240708
+alpha-0.6.1-20240708
 -tweak gui
 -fix gamepad throwing
 -fix dead player controls
@@ -23,26 +34,26 @@ alpha0.6.1 #20240708
 -better camera
 -better autoaim
 
-alpha0.6 #20240629
+alpha-0.6-20240629
 -fix can't find player after restart
 -fix audio
 -add starting stuffs
 -add bar gui
 
-alpha0.5.4 #20240627
+alpha-0.5.4-20240627
 -fix can't pick up items (exclude spells)
 -better perk share compatibility
 -add resurrect
 -fix polymorph reduce money
 
-alpha0.5.3 #20240602
+alpha-0.5.3-20240602
 -fix autoaim target player
 -better autoaim toggle
 -better compatibility
 -optimize code
 -fix can not pick up item
 
-alpha0.5.2 #20240526
+alpha-0.5.2-20240526
 -add more friendly_fire settings
 -better compatibility
 -improve sharing
@@ -51,7 +62,7 @@ alpha0.5.2 #20240526
 -fix autoaim not work
 -fix player num setting
 
-alpha0.5.1 #20240524
+alpha-0.5.1-20240524
 -fix camera
 -better wallet
 -add more check nil
@@ -61,14 +72,14 @@ alpha0.5.1 #20240524
 -add perk respawn
 -add kick immunity
 
-alpha0.5 #20240512
+alpha-0.5-20240512
 -fix some controls bug
 -add deadzone
 -improve aim binding
 -add smooth camera
 -fix icon delay
 
-alpha0.4.2 #20240501
+alpha-0.4.2-20240501
 -fix gui/camera offset
 -add better inventory switching
 -fix inventory/camera
@@ -79,10 +90,10 @@ alpha0.4.2 #20240501
 -add mouse aiming
 -optimize code
 
-alpha0.4.1 #20240430
+alpha-0.4.1-20240430
 -improve aiming
 
-alpha0.4 #20240427
+alpha-0.4-20240427
 -fix autoaim perk being killed
 -optimize code
 -update credits.txt
@@ -90,7 +101,7 @@ alpha0.4 #20240427
 -rename mod from NoitaMultiplayer to IotaMultiplayer
 -better autoaim
 
-alpha0.3 #20240421
+alpha-0.3-20240421
 -fix controls delay
 -add player num setting
 -add switch focus binding
@@ -102,8 +113,8 @@ alpha0.3 #20240421
 -add autoaim
 -add aim binding
 
-alpha0.2 #20240406
+alpha-0.2-20240406
 -fix inventory bug
 
-alpha0.1 #20240406
+alpha-0.1-20240406
 -first alpha version

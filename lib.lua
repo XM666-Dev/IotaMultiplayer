@@ -15,8 +15,12 @@ local mod_metatable = Metatable {
     end),
     previous_camera_centered_player = EntityAccessor("iota_multiplayer.previous_camera_centered_player"),
     max_index = VariableAccessor("iota_multiplayer.max_index", "value_int"),
-    player_positions = SerializedAccessor(VariableAccessor("iota_multiplayer.player_positions", "value_string"), "mods/iota_multiplayer/player_positions.lua", "mods/iota_multiplayer/player_positions_value_date.lua", "mods/iota_multiplayer/player_positions_file_date.lua"),
-    player_indexs = SerializedAccessor(VariableAccessor("iota_multiplayer.player_indexs", "value_string"), "mods/iota_multiplayer/player_indexs.lua", "mods/iota_multiplayer/player_indexs_value_date.lua", "mods/iota_multiplayer/player_indexs_file_date.lua"),
+    player_positions = SerializedAccessor(
+        VariableAccessor("iota_multiplayer.player_positions", "value_string", "{}"),
+        "mods/iota_multiplayer/player_positions.lua",
+        "mods/iota_multiplayer/player_positions_value_date.lua",
+        "mods/iota_multiplayer/player_positions_file_date.lua"
+    ),
 }
 mod = setmetatable({}, mod_metatable)
 
@@ -28,11 +32,14 @@ local player_metatable = Metatable {
     wallet = ComponentAccessor(EntityGetFirstComponent, "WalletComponent"),
     pick_upper = ComponentAccessor(EntityGetFirstComponent, "ItemPickUpperComponent"),
     damage_model = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "DamageModelComponent"),
-    lukki_disable_sprite = ComponentAccessor(EntityGetFirstComponent, "SpriteComponent", "lukki_disable"),
+    sprite = ComponentAccessor(EntityGetFirstComponent, "SpriteComponent", "lukki_disable"),
+    aiming_reticle = ComponentAccessor(EntityGetFirstComponent, "SpriteComponent", "aiming_reticle"),
     genome = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "GenomeDataComponent"),
     character_data = ComponentAccessor(EntityGetFirstComponent, "CharacterDataComponent"),
     inventory = ComponentAccessor(EntityGetFirstComponent, "Inventory2Component"),
     index = VariableAccessor("iota_multiplayer.index", "value_int"),
+    previous_aim_x = VariableAccessor("iota_multiplayer.previous_aim_x", "value_string"),
+    previous_aim_y = VariableAccessor("iota_multiplayer.previous_aim_y", "value_string"),
     dead = VariableAccessor("iota_multiplayer.dead", "value_bool"),
     previous_money = VariableAccessor("iota_multiplayer.previous_money", "value_int"),
     damage_frame = VariableAccessor("iota_multiplayer.damage_frame", "value_int"),
@@ -58,7 +65,7 @@ local player_metatable = Metatable {
     end),
 }
 function Player(player)
-    return validate_entity(player) and setmetatable({ id = player }, player_metatable) or {}
+    return validate(player) and setmetatable({ id = player }, player_metatable) or {}
 end
 
 function add_player(player)
@@ -67,11 +74,10 @@ function add_player(player)
     local player_data = Player(player)
     player_data.index = mod.max_index
     EntityAddComponent2(player, "LuaComponent", {
-        script_source_file = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
-        script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
-        script_kick = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
-        script_damage_received = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
-        script_polymorphing_to = "mods/iota_multiplayer/files/scripts/animals/player_callbacks.lua",
+        script_kick = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
+        script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
+        script_damage_received = "mods/iota_multiplayer/files/scripts/magic/player_damage.lua",
+        script_polymorphing_to = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua",
     })
 end
 
@@ -92,124 +98,20 @@ function get_players()
     end)
 end
 
-function get_attack_index(attacks)
-    local index = 0
-    for i, v in ipairs(attacks) do
-        if ComponentGetIsEnabled(v) then
-            index = i
-        end
-    end
-    return index
-end
-
-function warp(value, from, to)
-    return (value - from) % (to - from) + from
-end
-
-function get_attack_table(ai, attack)
-    local animation = "attack_ranged"
-    local frames_between
-    local action_frame
-    local entity_file
-    local entity_count_min
-    local entity_count_max
-    local offset_x
-    local offset_y
-    if ai ~= nil and ComponentGetValue2(ai, "attack_ranged_enabled") then
-        frames_between = ComponentGetValue2(ai, "attack_ranged_frames_between")
-        action_frame = ComponentGetValue2(ai, "attack_ranged_action_frame")
-        entity_file = ComponentGetValue2(ai, "attack_ranged_entity_file")
-        entity_count_min = ComponentGetValue2(ai, "attack_ranged_entity_count_min")
-        entity_count_max = ComponentGetValue2(ai, "attack_ranged_entity_count_max")
-        offset_x = ComponentGetValue2(ai, "attack_ranged_offset_x")
-        offset_y = ComponentGetValue2(ai, "attack_ranged_offset_y")
-    end
-    if attack ~= nil then
-        animation = ComponentGetValue2(attack, "animation_name")
-        frames_between = ComponentGetValue2(attack, "frames_between")
-        action_frame = ComponentGetValue2(attack, "attack_ranged_action_frame")
-        entity_file = ComponentGetValue2(attack, "attack_ranged_entity_file")
-        entity_count_min = ComponentGetValue2(attack, "attack_ranged_entity_count_min")
-        entity_count_max = ComponentGetValue2(attack, "attack_ranged_entity_count_max")
-        offset_x = ComponentGetValue2(attack, "attack_ranged_offset_x")
-        offset_y = ComponentGetValue2(attack, "attack_ranged_offset_y")
-    end
-    return {
-        animation = animation,
-        frames_between = frames_between,
-        action_frame = action_frame,
-        entity_file = entity_file,
-        entity_count_min = entity_count_min,
-        entity_count_max = entity_count_max,
-        offset_x = offset_x,
-        offset_y = offset_y,
-    }
-end
-
--- 计算变换矩阵
-function createTransformationMatrix(x, y, rotation, scale_x, scale_y)
-    local cos_r = math.cos(rotation)
-    local sin_r = math.sin(rotation)
-
-    return {
-        { scale_x * cos_r, -scale_y * sin_r, x },
-        { scale_x * sin_r, scale_y * cos_r,  y },
-        { 0,               0,                1 },
-    }
-end
-
--- 矩阵相乘
-function multiplyMatrices(m1, m2)
-    local result = {}
-    for i = 1, 3 do
-        result[i] = {}
-        for j = 1, 3 do
-            result[i][j] = m1[i][1] * m2[1][j] + m1[i][2] * m2[2][j] + m1[i][3] * m2[3][j]
-        end
-    end
-    return result
-end
-
--- 从矩阵提取变换参数
-function extractTransformationParameters(matrix)
-    local scale_x = math.sqrt(matrix[1][1] ^ 2 + matrix[2][1] ^ 2)
-    local scale_y = math.sqrt(matrix[1][2] ^ 2 + matrix[2][2] ^ 2)
-    local rotation = math.atan2(matrix[2][1], matrix[1][1])
-    local x = matrix[1][3]
-    local y = matrix[2][3]
-
-    return x, y, rotation, scale_x, scale_y
-end
-
--- 计算两个变换的乘积并返回结果变换的参数
-function combineTransformations(x1, y1, rotation1, scale_x1, scale_y1, x2, y2, rotation2, scale_x2, scale_y2)
-    local matrix1 = createTransformationMatrix(x1, y1, rotation1, scale_x1, scale_y1)
-    local matrix2 = createTransformationMatrix(x2, y2, rotation2, scale_x2, scale_y2)
-    local combinedMatrix = multiplyMatrices(matrix1, matrix2)
-
-    return extractTransformationParameters(combinedMatrix)
-end
-
-function shoot_projectile(entity)
-    local controls = EntityGetFirstComponent(entity, "ControlsComponent")
-    local ai = EntityGetFirstComponentIncludingDisabled(entity, "AnimalAIComponent")
-    local attacks = EntityGetComponent(entity, "AIAttackComponent") or {}
-    local attack_index = get_attack_index(attacks)
-    local attack_table = get_attack_table(ai, attacks[attack_index])
-    if controls ~= nil and ComponentGetValue2(controls, "polymorph_next_attack_frame") <= GameGetFrameNum() and attack_table.entity_file ~= nil then
-        local x, y, rotation, scale_x, scale_y = EntityGetTransform(entity)
-        x, y = combineTransformations(x, y, rotation, scale_x, scale_y, attack_table.offset_x, attack_table.offset_y, 0, 1, 1)
-        local target_x, target_y = ComponentGetValue2(controls, "mMousePosition")
-        local projectile_entity = EntityLoad(attack_table.entity_file, x, y)
-        GameShootProjectile(entity, x, y, target_x, target_y, projectile_entity)
-        ComponentSetValue2(controls, "polymorph_next_attack_frame", GameGetFrameNum() + attack_table.frames_between)
-    end
-end
-
 function set_dead(player, dead)
     local player_data = Player(player)
-    EntitySetComponentIsEnabled(player, player_data.genome._id, not dead)
-    EntitySetComponentIsEnabled(player, player_data.damage_model._id, not dead)
+    set_component_enabled(player_data.genome._id, not dead)
+    set_component_enabled(player_data.damage_model._id, not dead)
+    local effect = get_game_effect(player, "POLYMORPH")
+    if effect == nil then
+        effect = get_game_effect(player, "POLYMORPH_RANDOM")
+    end
+    if effect == nil then
+        effect = get_game_effect(player, "POLYMORPH_UNSTABLE")
+    end
+    if effect ~= nil then
+        set_component_enabled(effect, not dead)
+    end
     if dead then
         EntityRemoveTag(player, "hittable")
         if player_data.controls ~= nil then
@@ -220,6 +122,9 @@ function set_dead(player, dead)
                 end
             end
         end
+        local protection_polymorph, protection_polymorph_entity = GetGameEffectLoadTo(player, "PROTECTION_POLYMORPH", true)
+        ComponentSetValue2(protection_polymorph, "frames", -1)
+        EntityAddTag(protection_polymorph_entity, "iota_multiplayer.protection_polymorph")
     else
         EntityAddTag(player, "hittable")
         GamePlayAnimation(player, "intro_stand_up", 2)
@@ -227,6 +132,13 @@ function set_dead(player, dead)
         EntityInflictDamage(player, 0.04, "DAMAGE_PROJECTILE", "", "NONE", 0, 0)
         player_data.damage_model.hp = player_data.damage_model.max_hp
         GamePrint(GameTextGet("$log_coop_resurrected_player", player_data.index))
+        local protection_polymorph_entity = get_children(player, "iota_multiplayer.protection_polymorph")[1]
+        if protection_polymorph_entity ~= nil then
+            local protection_polymorph = EntityGetFirstComponent(protection_polymorph_entity, "GameEffectComponent")
+            if protection_polymorph ~= nil then
+                ComponentSetValue2(protection_polymorph, "frames", 0)
+            end
+        end
     end
     player_data.dead = dead
 end
@@ -259,7 +171,6 @@ function perk_spawn_with_data(x, y, perk_data, script_item_picked_up)
     })
     EntityAddComponent2(entity, "LuaComponent", {
         script_item_picked_up = script_item_picked_up,
-        execute_every_n_frame = -1,
     })
     return entity
 end

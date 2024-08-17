@@ -2,6 +2,8 @@ dofile_once("data/scripts/lib/utilities.lua")
 
 --#region
 
+local ModTextFileSetContent = ModTextFileSetContent
+
 NUMERIC_CHARACTERS = "0123456789"
 
 function append_translations(filename)
@@ -13,8 +15,12 @@ function has_flag_run_or_add(flag)
     return GameHasFlagRun(flag) or GameAddFlagRun(flag)
 end
 
-function validate_entity(entity)
-    return entity and entity > 0 and entity or nil
+function validate(id)
+    return id and id > 0 and id or nil
+end
+
+function set_component_enabled(component, enabled)
+    EntitySetComponentIsEnabled(ComponentGetEntity(component), component, enabled)
 end
 
 function get_children(entity, ...)
@@ -23,6 +29,11 @@ end
 
 function get_inventory_items(entity)
     return GameGetAllInventoryItems(entity) or {}
+end
+
+function get_game_effect(entity, name)
+    local effect = GameGetGameEffect(entity, name)
+    return validate(effect), validate(ComponentGetEntity(effect))
 end
 
 function get_frame_num_next()
@@ -47,6 +58,77 @@ function get_pos_on_screen(gui, x, y)
     return (x - camera_x) * zoom_x, (y - camera_y) * zoom_y
 end
 
+function get_attack_index(attacks)
+    local index = 0
+    for i, v in ipairs(attacks) do
+        if ComponentGetIsEnabled(v) then
+            index = i
+        end
+    end
+    return index
+end
+
+function get_attack_table(ai, attack)
+    local animation = "attack_ranged"
+    local frames_between
+    local action_frame
+    local entity_file
+    local entity_count_min
+    local entity_count_max
+    local offset_x
+    local offset_y
+    if ai ~= nil then
+        frames_between = ComponentGetValue2(ai, "attack_ranged_frames_between")
+        action_frame = ComponentGetValue2(ai, "attack_ranged_action_frame")
+        entity_file = ComponentGetValue2(ai, "attack_ranged_entity_file")
+        entity_count_min = ComponentGetValue2(ai, "attack_ranged_entity_count_min")
+        entity_count_max = ComponentGetValue2(ai, "attack_ranged_entity_count_max")
+        offset_x = ComponentGetValue2(ai, "attack_ranged_offset_x")
+        offset_y = ComponentGetValue2(ai, "attack_ranged_offset_y")
+    end
+    if attack ~= nil then
+        animation = ComponentGetValue2(attack, "animation_name")
+        frames_between = ComponentGetValue2(attack, "frames_between")
+        action_frame = ComponentGetValue2(attack, "attack_ranged_action_frame")
+        entity_file = ComponentGetValue2(attack, "attack_ranged_entity_file")
+        entity_count_min = ComponentGetValue2(attack, "attack_ranged_entity_count_min")
+        entity_count_max = ComponentGetValue2(attack, "attack_ranged_entity_count_max")
+        offset_x = ComponentGetValue2(attack, "attack_ranged_offset_x")
+        offset_y = ComponentGetValue2(attack, "attack_ranged_offset_y")
+    end
+    return {
+        animation = animation,
+        frames_between = frames_between,
+        action_frame = action_frame,
+        entity_file = entity_file,
+        entity_count_min = entity_count_min,
+        entity_count_max = entity_count_max,
+        offset_x = offset_x,
+        offset_y = offset_y,
+    }
+end
+
+function get_attack_ranged_pos(entity)
+    local ai = EntityGetFirstComponentIncludingDisabled(entity, "AnimalAIComponent")
+    local attacks = EntityGetComponent(entity, "AIAttackComponent") or {}
+    local attack_table = get_attack_table(ai, attacks[#attacks])
+    local x, y, rotation, scale_x, scale_y = EntityGetTransform(entity)
+    return transform_mult(x, y, rotation, scale_x, scale_y, attack_table.offset_x, attack_table.offset_y, 0, 1, 1)
+end
+
+function entity_shoot(shooter)
+    local ai = EntityGetFirstComponentIncludingDisabled(shooter, "AnimalAIComponent")
+    local attacks = EntityGetComponent(shooter, "AIAttackComponent") or {}
+    local attack_table = get_attack_table(ai, attacks[#attacks])
+    local controls = EntityGetFirstComponent(shooter, "ControlsComponent")
+    if controls ~= nil then
+        local x, y = get_attack_ranged_pos(shooter)
+        local aiming_vector_x, aiming_vector_y = ComponentGetValue2(controls, "mAimingVector")
+        local projectile_entity = EntityLoad(attack_table.entity_file, x, y)
+        GameShootProjectile(shooter, x, y, x + aiming_vector_x, y + aiming_vector_y, projectile_entity)
+    end
+end
+
 local ids = {}
 local max_id = 0x7FFFFFFF
 function new_id(s)
@@ -61,7 +143,7 @@ end
 
 function serialize(v)
     return (({
-        number = function(n) return ("%a"):format(n) end,
+        number = function(n) return ("%.16a"):format(n) end,
         string = function(s) return ("%q"):format(s) end,
         table = function(t)
             local s = "{"
@@ -73,7 +155,6 @@ function serialize(v)
     })[type(v)] or tostring)(v)
 end
 
-local ModTextFileSetContent = ModTextFileSetContent
 function deserialize(s)
     ModTextFileSetContent("data/scripts/empty.lua", "return " .. s)
     local f, err = loadfile("data/scripts/empty.lua")
@@ -176,8 +257,49 @@ function lerp_clamped(from, to, weight)
     return lerp(from, to, clamp(weight, 0, 1))
 end
 
+function warp(value, from, to)
+    return (value - from) % (to - from) + from
+end
+
 function point_in_rectangle(x, y, left, up, right, down)
     return x >= left and x <= right and y >= up and y <= down
+end
+
+function Matrix(x, y, rotation, scale_x, scale_y)
+    local cos_r = math.cos(rotation)
+    local sin_r = math.sin(rotation)
+    return {
+        { scale_x * cos_r, -scale_y * sin_r, x },
+        { scale_x * sin_r, scale_y * cos_r,  y },
+        { 0,               0,                1 },
+    }
+end
+
+function matrix_mult(m1, m2)
+    local result = {}
+    for i = 1, 3 do
+        result[i] = {}
+        for j = 1, 3 do
+            result[i][j] = m1[i][1] * m2[1][j] + m1[i][2] * m2[2][j] + m1[i][3] * m2[3][j]
+        end
+    end
+    return result
+end
+
+function matrix_to_transform(matrix)
+    local scale_x = math.sqrt(matrix[1][1] ^ 2 + matrix[2][1] ^ 2)
+    local scale_y = math.sqrt(matrix[1][2] ^ 2 + matrix[2][2] ^ 2)
+    local rotation = math.atan2(matrix[2][1], matrix[1][1])
+    local x = matrix[1][3]
+    local y = matrix[2][3]
+    return x, y, rotation, scale_x, scale_y
+end
+
+function transform_mult(x1, y1, rotation1, scale_x1, scale_y1, x2, y2, rotation2, scale_x2, scale_y2)
+    local matrix1 = Matrix(x1, y1, rotation1, scale_x1, scale_y1)
+    local matrix2 = Matrix(x2, y2, rotation2, scale_x2, scale_y2)
+    local matrix3 = matrix_mult(matrix1, matrix2)
+    return matrix_to_transform(matrix3)
 end
 
 --#endregion

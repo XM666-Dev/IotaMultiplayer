@@ -148,8 +148,8 @@ iota_multiplayer.setting_share_temple_perk,Temple perk,,,,,,,,圣山天赋,,,
 iota_multiplayer.settingdesc_share_temple_perk,Do temple perks respawn for others when picked up?,,,,,,,,圣山天赋被捡起时是否为其他玩家重新生成？,,,
 iota_multiplayer.setting_friendly_fire,FRIENDLY FIRE,,,,,,,,友伤,,,
 iota_multiplayer.settingdesc_friendly_fire,About friendly fire,,,,,,,,友军误伤相关,,,
-iota_multiplayer.setting_friendly_fire_percentage,Percentage,,,,,,,,百分比,,,
-iota_multiplayer.settingdesc_friendly_fire_percentage,The percentage of friendly fire between players.,,,,,,,,玩家之间的友伤百分比。,,,
+iota_multiplayer.setting_friendly_fire_percent,percent,,,,,,,,百分比,,,
+iota_multiplayer.settingdesc_friendly_fire_percent,The percent of friendly fire between players.,,,,,,,,玩家之间的友伤百分比。,,,
 iota_multiplayer.setting_friendly_fire_kick,Kick,,,,,,,,踢击,,,
 iota_multiplayer.settingdesc_friendly_fire_kick,Do players received friendly fire when kicked?,,,,,,,,玩家被踢击时是否受到友伤？,,,
 iota_multiplayer.setting_friendly_fire_kick_drop,Kick drop,,,,,,,,踢击掉落,,,
@@ -227,7 +227,7 @@ mod_settings = {
         category_id = "friendly_fire",
         settings = {
             Table({
-                id = "friendly_fire_percentage",
+                id = "friendly_fire_percent",
                 value_default = 0.5,
                 value_min = 0,
                 value_max = 1,
@@ -235,8 +235,8 @@ mod_settings = {
                 value_display_formatting = " $0 %",
                 scope = MOD_SETTING_SCOPE_RUNTIME,
             }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_percentage") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_percentage") end,
+                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_percent") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_percent") end,
             }),
             Table({
                 id = "friendly_fire_kick",

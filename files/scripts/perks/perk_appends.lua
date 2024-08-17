@@ -9,7 +9,7 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
     end
     local old_perk_pickup = perk_pickup
     function _G.perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
-        local x, y = EntityGetTransform(entity_who_picked)
+        local x, y = EntityGetTransform(entity_item)
         local perk_stats = EntityGetInRadiusWithTag(x, y, 30, "iota_multiplayer.perk_stats")[1]
         local perk_stats_data = PerkStats(perk_stats)
         if not (ModSettingGet("iota_multiplayer.share_temple_perk") and perk_stats ~= nil and perk_stats_data.spawn_count < mod.max_index) then

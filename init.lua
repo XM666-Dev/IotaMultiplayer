@@ -27,17 +27,25 @@ if zoom ~= 1 then
         end
     end))
     ModMagicNumbersFileAdd("mods/iota_multiplayer/files/magic_numbers.xml")
-    content = ModTextFileGetContent("mods/iota_multiplayer/files/shaders/post_final.frag")
-    local offset = map(zoom, 1, 2, 0, 2.75 / 64.0)
-    ModTextFileSetContent("data/shaders/post_final.frag", content:gsub("float offset = 0.0;", ("float offset = %f;"):format(offset), 1))
+    local offset = (zoom - 1) * 2.75 / 64.0 --map(zoom, 1, 2, 0, 2.75 / 64.0)
+    local flag = true
+    content = ModTextFileGetContent("data/shaders/post_final.frag"):gsub("tex_coord_fogofwar", function()
+        local result
+        if flag then
+            result = "tex_coord_fogofwar"
+            flag = false
+        else
+            result = ("vec2(tex_coord_fogofwar.x, tex_coord_fogofwar.y + %f)"):format(offset)
+        end
+        return result
+    end)
+    ModTextFileSetContent("data/shaders/post_final.frag", content)
 end
 
 function OnWorldInitialized()
     world_initialized = true
-    if type(mod.player_positions) == "table" then
-        for i, pos in ipairs(mod.player_positions) do
-            EntityKill(EntityLoad("mods/iota_multiplayer/files/entities/buildings/keep_alive.xml", unpack(pos)))
-        end
+    for i, pos in ipairs(mod.player_positions) do
+        EntityKill(EntityLoad("mods/iota_multiplayer/files/entities/buildings/keep_alive.xml", unpack(pos)))
     end
 end
 
@@ -48,35 +56,13 @@ function OnPlayerSpawned(player)
         return
     end
     add_player(player)
+    EntityAddComponent2(mod.id, "LuaComponent", {
+        script_source_file = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua",
+    })
 end
 
-local function update_player()
-    if type(mod.player_indexs) == "table" then
-        for i, v in ipairs(mod.player_indexs) do
-            local player, index, is_primary_player, is_gui_enabled_player, is_camera_centered_player = unpack(v)
-            local player_data = Player(player)
-            player_data.index = index
-            EntityAddTag(player, "iota_multiplayer.player")
-            if is_primary_player then
-                EntityAddTag(player, "iota_multiplayer.primary_player")
-            end
-            if is_gui_enabled_player then
-                EntityAddTag(player, "iota_multiplayer.gui_enabled_player")
-            end
-            if is_camera_centered_player then
-                EntityAddTag(player, "iota_multiplayer.camera_centered_player")
-            end
-            local ai = EntityGetFirstComponent(player, "AnimalAIComponent")
-            if ai ~= nil then
-                EntitySetComponentIsEnabled(player, ai, false)
-            end
-        end
-    end
-    mod.player_indexs = nil
-end
-
-local function is_pressed(a, b, buttoned)
-    return (a ~= b or not buttoned) and b ~= 0
+local function is_pressed(a, b, emulated)
+    return (a ~= b or not emulated) and b ~= 0
 end
 local function update_controls()
     local players = get_players_including_disabled()
@@ -90,7 +76,7 @@ local function update_controls()
 
         player_data.controls.enabled = false
 
-        if player_data.dead or player_data.lukki_disable_sprite ~= nil and player_data.lukki_disable_sprite.rect_animation == "intro_stand_up" then
+        if player_data.dead or player_data.sprite ~= nil and player_data.sprite.rect_animation == "intro_stand_up" then
             goto continue
         end
 
@@ -100,7 +86,13 @@ local function update_controls()
         end
         if player_data.controls.mButtonDownFire then
             player_data.controls.mButtonLastFrameFire = get_frame_num_next()
-            shoot_projectile(player)
+        end
+        if player_data.controls.polymorph_hax and player_data.controls.polymorph_next_attack_frame <= get_frame_num_next() and player_data.controls.mButtonFrameFire == get_frame_num_next() then
+            entity_shoot(player)
+            local ai = EntityGetFirstComponentIncludingDisabled(player, "AnimalAIComponent")
+            local attacks = EntityGetComponent(player, "AIAttackComponent") or {}
+            local attack_table = get_attack_table(ai, attacks[#attacks])
+            player_data.controls.polymorph_next_attack_frame = get_frame_num_next() + attack_table.frames_between
         end
 
         player_data.controls.mButtonDownFire2 = player_data:mnin_bind("sprayflask", true, false, false, false, "guied")
@@ -198,7 +190,8 @@ local function update_controls()
         local CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS = tonumber(MagicNumbersGetValue("CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS"))
         if aim_unbound then
             local mouse_position_x, mouse_position_y = DEBUG_GetMouseWorld()
-            local aiming_vector_x, aiming_vector_y = mouse_position_x - player_x, mouse_position_y - player_y
+            local center_x, center_y = EntityGetFirstHitboxCenter(player)
+            local aiming_vector_x, aiming_vector_y = mouse_position_x - center_x, mouse_position_y - center_y
             local magnitude = math.max(math.sqrt(aiming_vector_x * aiming_vector_x + aiming_vector_y * aiming_vector_y), CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS)
             local aiming_vector_normalized_x, aiming_vector_normalized_y = aiming_vector_x / magnitude, aiming_vector_y / magnitude
             player_data.controls().mAimingVector = { aiming_vector_x, aiming_vector_y }
@@ -214,16 +207,32 @@ local function update_controls()
         if player_data:is_inventory_open() then
             aim = { 0, 0 }
         end
-        local aiming_vector = aim
         local aiming_vector_non_zero_latest = player_data.controls().mAimingVectorNonZeroLatest
-        local gamepad_aiming_vector_raw = player_data.controls().mGamepadAimingVectorRaw
-        if aim[1] == 0 and aim[2] == 0 then
-            aiming_vector = aiming_vector_non_zero_latest
+        local function mnin_stick_raw(mod_id, bind_id, pressed_mode, is_vip, inmode)
+            local abort_tbl = { { 0, 0 }, false, { false, false }, 0 }
+            if (GameHasFlagRun(mnee.SERV_MODE) and not (mnee.ignore_service_mode)) then return unpack(abort_tbl) end
+            if (GameHasFlagRun(mnee.TOGGLER) and not (is_vip)) then return unpack(abort_tbl) end
+            if (not (mnee.is_priority_mod(mod_id))) then return unpack(abort_tbl) end
+
+            local binding = mnee.get_bindings()
+            if (binding ~= nil) then binding = binding[mod_id] end
+            if (binding ~= nil) then binding = binding[bind_id] end
+            if (not (pen.vld(binding))) then return unpack(abort_tbl) end
+
+            local acc = 100
+            local val_x, gone_x, buttoned_x = mnee.mnin_axis(mod_id, binding.axes[1], true, pressed_mode, is_vip, inmode)
+            local val_y, gone_y, buttoned_y = mnee.mnin_axis(mod_id, binding.axes[2], true, pressed_mode, is_vip, inmode)
+            local direction = math.rad(math.floor(math.deg(math.atan2(val_y, val_x)) + 0.5))
+            val_x, val_y = pen.rounder(mnee.apply_deadzone(math.min(val_x, 1), binding.jpad_type, binding.deadzone), acc), pen.rounder(mnee.apply_deadzone(math.min(val_y, 1), binding.jpad_type, binding.deadzone), acc)
+            return { math.min(val_x, 1), math.min(val_y, 1) }, gone_x or gone_y, { buttoned_x, buttoned_y }, direction
         end
-        if is_pressed(gamepad_aiming_vector_raw[1], aim[1], aim_emulated[1]) or is_pressed(gamepad_aiming_vector_raw[2], aim[2], aim_emulated[2]) then
+        local aim_raw = mnin_stick_raw("iota_multiplayer" .. player_data.index, "aim")
+        if is_pressed(tonumber(player_data.previous_aim_x), aim_raw[1], aim_emulated[1]) or is_pressed(tonumber(player_data.previous_aim_y), aim_raw[2], aim_emulated[2]) then
             aiming_vector_non_zero_latest = aim
         end
-        player_data.controls().mAimingVector = { aiming_vector[1] * CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS, aiming_vector[2] * CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS }
+        player_data.previous_aim_x = ("%.16a"):format(aim_raw[1])
+        player_data.previous_aim_y = ("%.16a"):format(aim_raw[2])
+        player_data.controls().mAimingVector = { aiming_vector_non_zero_latest[1] * CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS, aiming_vector_non_zero_latest[2] * CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS }
         player_data.controls().mAimingVectorNormalized = aim
         player_data.controls().mAimingVectorNonZeroLatest = aiming_vector_non_zero_latest
         player_data.controls().mGamepadAimingVectorRaw = aim
@@ -252,7 +261,7 @@ local function update_camera()
         end)
     end
     if mod.camera_centered_player ~= mod.previous_camera_centered_player then
-        local camera_centered_player_data = Player(mod.camera_centered_player)
+        camera_centered_player_data = Player(mod.camera_centered_player)
         local previous_camera_centered_player_data = Player(mod.previous_camera_centered_player)
         if camera_centered_player_data.shooter ~= nil and previous_camera_centered_player_data.shooter ~= nil then
             camera_centered_player_data.shooter().mSmoothedCameraPosition = previous_camera_centered_player_data.shooter().mSmoothedCameraPosition
@@ -263,13 +272,18 @@ local function update_camera()
     end
     local primary_player_data = Player(mod.primary_player)
     if primary_player_data.shooter ~= nil then
+        GameSetCameraFree(false)
         primary_player_data.shooter().mDesiredCameraPos = camera_centered_player_data.shooter ~= nil and camera_centered_player_data.shooter().mDesiredCameraPos or { EntityGetTransform(mod.camera_centered_player) }
+    elseif mod.camera_centered_player ~= nil then
+        GameSetCameraFree(true)
+        local pos = camera_centered_player_data.shooter ~= nil and camera_centered_player_data.shooter().mDesiredCameraPos or { EntityGetTransform(mod.camera_centered_player) }
+        GameSetCameraPos(unpack(pos))
     end
     local players_including_disabled = get_players_including_disabled()
     for i, player in ipairs(players_including_disabled) do
         local player_data = Player(player)
         if player_data.listener ~= nil then
-            EntitySetComponentIsEnabled(player, player_data.listener._id, player == mod.camera_centered_player)
+            set_component_enabled(player_data.listener._id, player == mod.camera_centered_player)
         end
     end
 end
@@ -295,7 +309,7 @@ local function update_gui()
     for i, player in ipairs(players) do
         local player_data = Player(player)
         if player_data.gui ~= nil then
-            EntitySetComponentIsEnabled(player, player_data.gui._id, player == mod.gui_enabled_player)
+            set_component_enabled(player_data.gui._id, player == mod.gui_enabled_player)
         end
     end
 end
@@ -305,7 +319,7 @@ local function update_gui_post()
     for i, player in ipairs(players) do
         local player_data = Player(player)
         if player_data.gui ~= nil then
-            EntitySetComponentIsEnabled(player, player_data.gui._id, true)
+            set_component_enabled(player_data.gui._id, true)
         end
     end
 end
@@ -373,10 +387,14 @@ local function update_common()
             GamePlayAnimation(player, "intro_sleep", 2)
         end
         local arm_r = player_data:get_arm_r()
-        if arm_r ~= nil and player_data.lukki_disable_sprite ~= nil then
-            local stand = player_data.lukki_disable_sprite.rect_animation ~= "intro_sleep" and player_data.lukki_disable_sprite.rect_animation ~= "intro_stand_up"
+        if arm_r ~= nil and player_data.sprite ~= nil then
+            local stand = player_data.sprite.rect_animation ~= "intro_sleep" and player_data.sprite.rect_animation ~= "intro_stand_up"
             EntitySetName(arm_r, stand and "arm_r" or "")
             EntitySetComponentsWithTagEnabled(arm_r, "with_item", stand)
+        end
+        if player_data.aiming_reticle ~= nil then
+            local aim, aim_unbound, aim_emulated = player_data:mnin_stick("aim")
+            player_data.aiming_reticle.visible = not aim_unbound
         end
     end
     if give_up then
@@ -386,7 +404,7 @@ local function update_common()
         end)
         for i, player in ipairs(damaged_players) do
             local player_data = Player(player)
-            EntitySetComponentIsEnabled(player, player_data.damage_model._id, true)
+            set_component_enabled(player_data.damage_model._id, true)
             player_data.damage_model.wait_for_kill_flag_on_death = false
             player_data.damage_model.hp = 0
             EntityInflictDamage(player, 0.04, "DAMAGE_CURSE", player_data.damage_message, "NONE", 0, 0, player_data.damage_entity_thats_responsible)
@@ -451,7 +469,8 @@ local function update_gui_mod()
             gui_image_nine_piece(gui, new_id("flying_bar" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_flying_bar.png")
         end
     end
-    if #players < 1 then
+    local players_including_disabled = get_players_including_disabled()
+    if #players < 1 and #players_including_disabled > 0 then
         local screen_w, screen_h = GuiGetScreenDimensions(gui)
         GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
         GuiOptionsAddForNextWidget(gui, GUI_OPTION.GamepadDefaultWidget)
@@ -463,14 +482,13 @@ local function update_gui_mod()
 end
 
 function OnWorldPreUpdate()
-    update_player()
     update_controls()
-    update_camera()
     update_gui()
     update_common()
 end
 
 function OnWorldPostUpdate()
+    update_camera()
     update_gui_post()
     update_gui_mod()
 end
