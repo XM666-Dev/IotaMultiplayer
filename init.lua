@@ -248,46 +248,6 @@ local function update_controls()
     end
 end
 
-local function update_camera()
-    local players = get_players()
-    local camera_centered_player_data = Player(mod.camera_centered_player)
-    if mnee.mnin_bind("iota_multiplayer", "switch_player", true, true) or mod.camera_centered_player == nil and player_spawned then
-        local entities = mod.camera_centered_player ~= nil and table.filter(players, function(player)
-            return Player(player).index > camera_centered_player_data.index
-        end) or {}
-        entities = #entities > 0 and entities or players
-        mod.camera_centered_player = table.iterate(entities, function(a, b)
-            return b == nil or Player(a).index < Player(b).index
-        end)
-    end
-    if mod.camera_centered_player ~= mod.previous_camera_centered_player then
-        camera_centered_player_data = Player(mod.camera_centered_player)
-        local previous_camera_centered_player_data = Player(mod.previous_camera_centered_player)
-        if camera_centered_player_data.shooter ~= nil and previous_camera_centered_player_data.shooter ~= nil then
-            camera_centered_player_data.shooter().mSmoothedCameraPosition = previous_camera_centered_player_data.shooter().mSmoothedCameraPosition
-            camera_centered_player_data.shooter().mSmoothedAimingVector = previous_camera_centered_player_data.shooter().mSmoothedAimingVector
-            camera_centered_player_data.shooter().mDesiredCameraPos = previous_camera_centered_player_data.shooter().mDesiredCameraPos
-        end
-        mod.previous_camera_centered_player = mod.camera_centered_player
-    end
-    local primary_player_data = Player(mod.primary_player)
-    if primary_player_data.shooter ~= nil then
-        GameSetCameraFree(false)
-        primary_player_data.shooter().mDesiredCameraPos = camera_centered_player_data.shooter ~= nil and camera_centered_player_data.shooter().mDesiredCameraPos or { EntityGetTransform(mod.camera_centered_player) }
-    elseif mod.camera_centered_player ~= nil then
-        GameSetCameraFree(true)
-        local pos = camera_centered_player_data.shooter ~= nil and camera_centered_player_data.shooter().mDesiredCameraPos or { EntityGetTransform(mod.camera_centered_player) }
-        GameSetCameraPos(unpack(pos))
-    end
-    local players_including_disabled = get_players_including_disabled()
-    for i, player in ipairs(players_including_disabled) do
-        local player_data = Player(player)
-        if player_data.listener ~= nil then
-            set_component_enabled(player_data.listener._id, player == mod.camera_centered_player)
-        end
-    end
-end
-
 local function update_gui()
     local gui_enabled_player_data = Player(mod.gui_enabled_player)
     if mod.gui_enabled_player == nil or gui_enabled_player_data.controls ~= nil and gui_enabled_player_data.controls.mButtonFrameInventory == get_frame_num_next() == gui_enabled_player_data:is_inventory_open() then
@@ -421,6 +381,46 @@ local function update_common()
     end
 end
 
+local function update_camera()
+    local players = get_players()
+    local camera_centered_player_data = Player(mod.camera_centered_player)
+    if mnee.mnin_bind("iota_multiplayer", "switch_player", true, true) or mod.camera_centered_player == nil and player_spawned then
+        local entities = mod.camera_centered_player ~= nil and table.filter(players, function(player)
+            return Player(player).index > camera_centered_player_data.index
+        end) or {}
+        entities = #entities > 0 and entities or players
+        mod.camera_centered_player = table.iterate(entities, function(a, b)
+            return b == nil or Player(a).index < Player(b).index
+        end)
+    end
+    if mod.camera_centered_player ~= mod.previous_camera_centered_player then
+        camera_centered_player_data = Player(mod.camera_centered_player)
+        local previous_camera_centered_player_data = Player(mod.previous_camera_centered_player)
+        if camera_centered_player_data.shooter ~= nil and previous_camera_centered_player_data.shooter ~= nil then
+            camera_centered_player_data.shooter().mSmoothedCameraPosition = previous_camera_centered_player_data.shooter().mSmoothedCameraPosition
+            camera_centered_player_data.shooter().mSmoothedAimingVector = previous_camera_centered_player_data.shooter().mSmoothedAimingVector
+            camera_centered_player_data.shooter().mDesiredCameraPos = previous_camera_centered_player_data.shooter().mDesiredCameraPos
+        end
+        mod.previous_camera_centered_player = mod.camera_centered_player
+    end
+    local primary_player_data = Player(mod.primary_player)
+    if primary_player_data.shooter ~= nil then
+        GameSetCameraFree(false)
+        primary_player_data.shooter().mDesiredCameraPos = camera_centered_player_data.shooter ~= nil and camera_centered_player_data.shooter().mDesiredCameraPos or { EntityGetTransform(mod.camera_centered_player) }
+    elseif mod.camera_centered_player ~= nil then
+        GameSetCameraFree(true)
+        local pos = camera_centered_player_data.shooter ~= nil and camera_centered_player_data.shooter().mDesiredCameraPos or { EntityGetTransform(mod.camera_centered_player) }
+        GameSetCameraPos(unpack(pos))
+    end
+    local players_including_disabled = get_players_including_disabled()
+    for i, player in ipairs(players_including_disabled) do
+        local player_data = Player(player)
+        if player_data.listener ~= nil then
+            set_component_enabled(player_data.listener._id, player == mod.camera_centered_player)
+        end
+    end
+end
+
 local function gui_image_nine_piece(gui, id, x, y, to_x, to_y, ...)
     GuiImageNinePiece(gui, id, x, y, to_x - x, to_y - y, ...)
 end
@@ -488,7 +488,7 @@ function OnWorldPreUpdate()
 end
 
 function OnWorldPostUpdate()
-    update_camera()
     update_gui_post()
+    update_camera()
     update_gui_mod()
 end
