@@ -6,19 +6,17 @@ function item_pickup(entity_item, entity_pickupper, item_name)
     perk_spawn_with_data(x, y, {
         ui_name = "$action_autoaim",
         ui_description = "$actiondesc_autoaim",
-        perk_icon = "mods/iota_multiplayer/files/items_gfx/perks/autoaim.png"
+        perk_icon = "mods/iota_multiplayer/files/items_gfx/perks/autoaim.png",
     }, "mods/iota_multiplayer/files/scripts/perks/autoaim_pickup.lua")
-    local lua = table.filter(EntityGetComponentIncludingDisabled(entity_pickupper, "LuaComponent"), function(lua)
-        return ComponentGetValue2(lua, "script_shot") == "mods/iota_multiplayer/files/scripts/perks/autoaim_shot.lua"
-    end)[1]
-    if lua then
-        EntityRemoveComponent(entity_pickupper, lua)
-        GamePrint(GameTextGet("$action_autoaim") .. " " .. GameTextGet("$option_off"))
-    else
-        EntityAddComponent2(entity_pickupper, "LuaComponent", {
-            script_shot = "mods/iota_multiplayer/files/scripts/perks/autoaim_shot.lua",
-            execute_every_n_frame = -1,
-        })
-        GamePrint(GameTextGet("$action_autoaim") .. " " .. GameTextGet("$option_on"))
+
+    local entity_pickupper_data = Player(entity_pickupper)
+    if entity_pickupper_data.autoaim ~= nil then
+        local enabled = ComponentGetIsEnabled(entity_pickupper_data.autoaim._id)
+        set_component_enabled(entity_pickupper_data.autoaim._id, not enabled)
+        if enabled then
+            GamePrint(table.concat { GameTextGet("$action_autoaim"), " ", GameTextGet("$option_off") })
+        else
+            GamePrint(table.concat { GameTextGet("$action_autoaim"), " ", GameTextGet("$option_on") })
+        end
     end
 end

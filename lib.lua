@@ -37,6 +37,7 @@ local player_metatable = Metatable {
     genome = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "GenomeDataComponent"),
     character_data = ComponentAccessor(EntityGetFirstComponent, "CharacterDataComponent"),
     inventory = ComponentAccessor(EntityGetFirstComponent, "Inventory2Component"),
+    autoaim = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "LuaComponent", "iota_multiplayer.autoaim"),
     index = VariableAccessor("iota_multiplayer.index", "value_int"),
     previous_aim_x = VariableAccessor("iota_multiplayer.previous_aim_x", "value_string"),
     previous_aim_y = VariableAccessor("iota_multiplayer.previous_aim_y", "value_string"),
@@ -78,6 +79,11 @@ function add_player(player)
         script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
         script_damage_received = "mods/iota_multiplayer/files/scripts/magic/player_damage.lua",
         script_polymorphing_to = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua",
+    })
+    EntityAddComponent2(player, "LuaComponent", {
+        _tags = "iota_multiplayer.autoaim",
+        _enabled = false,
+        script_shot = "mods/iota_multiplayer/files/scripts/perks/autoaim_shot.lua",
     })
 end
 

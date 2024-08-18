@@ -2,7 +2,6 @@
 --Github https://github.com/XM666-Dev/IotaMultiplayer
 
 dofile_once("mods/iota_multiplayer/lib.lua")
---dofile_once("mods/iota_multiplayer/NoitaPatcher/load.lua")
 
 ModLuaFileAppend("mods/mnee/bindings.lua", "mods/iota_multiplayer/mnee.lua")
 ModLuaFileAppend("data/scripts/biomes/mountain/mountain_left_entrance.lua", "mods/iota_multiplayer/files/scripts/biomes/mountain/mountain_left_entrance_appends.lua")
@@ -13,21 +12,36 @@ append_translations("mods/iota_multiplayer/files/translations.csv")
 
 local gui = GuiCreate()
 
+local function get_magic_numbers()
+    local t = {}
+    for k, v in string.gmatch(ModTextFileGetContent("data/magic_numbers.xml"), '(%g+)%s*=%s*"(.-)"') do
+        t[k] = v
+    end
+    return t
+end
+local function MagicNumbers(t)
+    local list = { "<MagicNumbers " }
+    for k, v in pairs(t) do
+        table.insert(list, ('%s="%s"'):format(k, v))
+    end
+    table.insert(list, "/>")
+    return table.concat(list)
+end
+local function add_magic_numbers(t)
+    ModTextFileSetContent("mods/iota_multiplayer/files/magic_numbers.xml", MagicNumbers(t))
+    ModMagicNumbersFileAdd("mods/iota_multiplayer/files/magic_numbers.xml")
+end
 if GameGetWorldStateEntity() == 0 then
     ModSettingSet("iota_multiplayer.camera_zoom", ModSettingGetNextValue("iota_multiplayer.camera_zoom") or 1)
 end
 local zoom = ModSettingGet("iota_multiplayer.camera_zoom")
 if zoom ~= 1 then
-    local content = ModTextFileGetContent("mods/iota_multiplayer/files/magic_numbers.xml")
-    ModTextFileSetContent("mods/iota_multiplayer/files/magic_numbers.xml", content:asub(function(k, v)
-        if k == "VIRTUAL_RESOLUTION_X" then
-            return ('%s="%f"'):format(k, tonumber(v) * zoom)
-        elseif k == "VIRTUAL_RESOLUTION_Y" then
-            return ('%s="%f"'):format(k, tonumber(v) * zoom)
-        end
-    end))
-    ModMagicNumbersFileAdd("mods/iota_multiplayer/files/magic_numbers.xml")
-    local offset = (zoom - 1) * 2.75 / 64.0 --map(zoom, 1, 2, 0, 2.75 / 64.0)
+    local magic_numbers = get_magic_numbers()
+    add_magic_numbers({
+        VIRTUAL_RESOLUTION_X = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X) * zoom,
+        VIRTUAL_RESOLUTION_Y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y) * zoom,
+    })
+    local offset = (zoom - 1) * 2.75 / 64.0
     local flag = true
     content = ModTextFileGetContent("data/shaders/post_final.frag"):gsub("tex_coord_fogofwar", function()
         local result
@@ -43,7 +57,6 @@ if zoom ~= 1 then
 end
 
 function OnWorldInitialized()
-    world_initialized = true
     for i, pos in ipairs(mod.player_positions) do
         EntityKill(EntityLoad("mods/iota_multiplayer/files/entities/buildings/keep_alive.xml", unpack(pos)))
     end
@@ -371,20 +384,18 @@ local function update_common()
             EntityKill(player)
         end
     end
-    if world_initialized then
-        local player_positions = {}
-        for i, player in ipairs(players_including_disabled) do
-            local x, y = EntityGetTransform(player)
-            player_positions[i] = { x, y }
-        end
-        mod.player_positions = player_positions
+    local player_positions = {}
+    for i, player in ipairs(players_including_disabled) do
+        local x, y = EntityGetTransform(player)
+        player_positions[i] = { x, y }
     end
+    mod.player_positions = player_positions
 end
 
 local function update_camera()
     local players = get_players()
     local camera_centered_player_data = Player(mod.camera_centered_player)
-    if mnee.mnin_bind("iota_multiplayer", "switch_player", true, true) or mod.camera_centered_player == nil and player_spawned then
+    if mnee.mnin_bind("iota_multiplayer", "switch_player", true, true) or mod.camera_centered_player == nil then
         local entities = mod.camera_centered_player ~= nil and table.filter(players, function(player)
             return Player(player).index > camera_centered_player_data.index
         end) or {}
@@ -425,56 +436,64 @@ local function gui_image_nine_piece(gui, id, x, y, to_x, to_y, ...)
     GuiImageNinePiece(gui, id, x, y, to_x - x, to_y - y, ...)
 end
 local function update_gui_mod()
-    if not world_initialized or mod.max_index < 2 then
+    if mod.max_index < 2 then
         return
     end
     GuiStartFrame(gui)
-    local gui_enabled_player_data = Player(mod.gui_enabled_player)
+
     if mod.gui_enabled_player ~= nil then
+        local gui_enabled_player_data = Player(mod.gui_enabled_player)
         GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
         GuiText(gui, 10, 25, "P" .. gui_enabled_player_data.index)
     end
+
+    local widgets = {}
     local players = get_players()
     for i, player in ipairs(players) do
         local player_data = Player(player)
-
         local player_x, player_y = EntityGetTransform(player)
         local x, y = get_pos_on_screen(gui, player_x, player_y)
-        GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
-        GuiColorSetForNextWidget(gui, 1, 1, 1, gui_enabled_player_data.gui ~= nil and 1 - gui_enabled_player_data.gui.mBackgroundOverlayAlpha * 2 or 1)
-        GuiText(gui, x, y + 5, "P" .. player_data.index)
+
+        table.insert(widgets, function()
+            GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
+            GuiText(gui, x, y + 5, "P" .. player_data.index)
+        end)
 
         local from_x, from_y = x + 7.5, y + 7.5
         local to_x, to_y = from_x + 5, from_y + 5
-        local z = 127
-        GuiZSetForNextWidget(gui, z)
-        z = z - 1
-        gui_image_nine_piece(gui, new_id("bar_bg" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_bar_bg.png")
+        table.insert(widgets, function()
+            gui_image_nine_piece(gui, new_id("bar_bg" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_bar_bg.png")
+        end)
 
         if player_data.damage_model ~= nil then
             local from_x, from_y = from_x + 1, from_y + 1
             local to_x, to_y = to_x - 1, to_y - 1
             to_x = lerp_clamped(from_x, to_x, player_data.damage_model.hp / player_data.damage_model.max_hp)
-            GuiZSetForNextWidget(gui, z)
-            z = z - 1
-            gui_image_nine_piece(gui, new_id("health_bar" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_health_bar.png")
+            table.insert(widgets, function()
+                gui_image_nine_piece(gui, new_id("health_bar" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_health_bar.png")
+            end)
         end
 
         if player_data.character_data ~= nil and player_data.character_data.mFlyingTimeLeft < player_data.character_data.fly_time_max then
             local from_x, from_y = from_x + 1, from_y + 1
             local to_x, to_y = to_x - 1, to_y - 1
             to_y = lerp_clamped(to_y, from_y, player_data.character_data.mFlyingTimeLeft / player_data.character_data.fly_time_max)
-            GuiZSetForNextWidget(gui, z)
-            z = z - 1
-            gui_image_nine_piece(gui, new_id("flying_bar" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_flying_bar.png")
+            table.insert(widgets, function()
+                gui_image_nine_piece(gui, new_id("flying_bar" .. i), from_x, from_y, to_x, to_y, 1, "data/ui_gfx/hud/colors_flying_bar.png")
+            end)
         end
     end
+    for i, f in ipairs(widgets) do
+        GuiZSetForNextWidget(gui, #widgets - i + 1001)
+        f()
+    end
+
     local players_including_disabled = get_players_including_disabled()
     if #players < 1 and #players_including_disabled > 0 then
         local screen_w, screen_h = GuiGetScreenDimensions(gui)
         GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
         GuiOptionsAddForNextWidget(gui, GUI_OPTION.GamepadDefaultWidget)
-        local clicked = GuiButton(gui, new_id("button_give_up"), screen_w / 2, screen_h / 2, "$iota_multiplayer.menugiveup")
+        local clicked = GuiButton(gui, new_id("give_up_button"), screen_w / 2, screen_h / 2, "$iota_multiplayer.menugiveup")
         if clicked then
             give_up = true
         end
@@ -482,13 +501,17 @@ local function update_gui_mod()
 end
 
 function OnWorldPreUpdate()
-    update_controls()
-    update_gui()
-    update_common()
+    if player_spawned then
+        update_controls()
+        update_gui()
+        update_common()
+    end
 end
 
 function OnWorldPostUpdate()
-    update_gui_post()
-    update_camera()
-    update_gui_mod()
+    if player_spawned then
+        update_gui_post()
+        update_camera()
+        update_gui_mod()
+    end
 end

@@ -1,6 +1,4 @@
-dofile_once("mods/iota_multiplayer/files/scripts/lib/sult.lua")
-
-local angle = math.pi / 4
+dofile_once("mods/iota_multiplayer/lib.lua")
 
 local projectile = GetUpdatedEntityID()
 local projectile_component = EntityGetFirstComponent(projectile, "ProjectileComponent")
@@ -9,6 +7,11 @@ local projectile_x, projectile_y = EntityGetFirstHitboxCenter(projectile)
 local velocity_x, velocity_y = GameGetVelocityCompVelocity(projectile)
 local velocity_direction = get_direction(0, 0, velocity_x, velocity_y)
 local speed = get_magnitude(velocity_x, velocity_y)
+
+local shooter_data = Player(shooter)
+local x, y = unpack(shooter_data.controls().mAimingVectorNormalized)
+local length = x * x + y * y
+local angle = math.pi / 4 * length
 
 local function get_direction_difference_abs(a, b)
     return math.abs(get_direction_difference(a, b))
@@ -39,14 +42,12 @@ local enemy = table.iterate(enemies, function(a, b)
 end)
 
 if enemy == nil then return end
-
-local enemy_x, enemy_y   = EntityGetFirstHitboxCenter(enemy)
-
+local enemy_x, enemy_y = EntityGetFirstHitboxCenter(enemy)
 local vector_x, vector_y = vec_sub(enemy_x, enemy_y, projectile_x, projectile_y)
-vector_x, vector_y       = vec_normalize(vector_x, vector_y)
-vector_x, vector_y       = vec_mult(vector_x, vector_y, speed)
+vector_x, vector_y = vec_normalize(vector_x, vector_y)
+vector_x, vector_y = vec_mult(vector_x, vector_y, speed)
 
-local velocity_comp      = EntityGetFirstComponent(projectile, "VelocityComponent")
-if velocity_comp then
-    ComponentSetValue2(velocity_comp, "mVelocity", vector_x, vector_y)
+local velocity_component = EntityGetFirstComponent(projectile, "VelocityComponent")
+if velocity_component ~= nil then
+    ComponentSetValue2(velocity_component, "mVelocity", vector_x, vector_y)
 end

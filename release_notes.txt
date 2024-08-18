@@ -1,4 +1,8 @@
-﻿alpha-0.7.4-20240817
+﻿alpha-0.7.5-20240818
+-fix gui
+-improve autoaim
+
+alpha-0.7.4-20240817
 -fix polymorph
 -fix polymorph dead
 -fix polymorph aim
