@@ -22,7 +22,14 @@ end
 local function MagicNumbers(t)
     local list = { "<MagicNumbers " }
     for k, v in pairs(t) do
-        table.insert(list, ('%s="%s"'):format(k, type(v) == "number" and ("%f"):format(v) or v))
+        local value_type = type(v)
+        if value_type == "number" then
+            v = ("%f"):format(v)
+        end
+        if value_type == "boolean" then
+            v = v and "1" or "0"
+        end
+        table.insert(list, ('%s="%s"'):format(k, v))
     end
     table.insert(list, "/>")
     return table.concat(list)
