@@ -22,7 +22,7 @@ end
 local function MagicNumbers(t)
     local list = { "<MagicNumbers " }
     for k, v in pairs(t) do
-        table.insert(list, ('%s="%s"'):format(k, v))
+        table.insert(list, ('%s="%s"'):format(k, type(v) == "number" and ("%f"):format(v) or v))
     end
     table.insert(list, "/>")
     return table.concat(list)
