@@ -1,4 +1,4 @@
-dofile_once("mods/iota_multiplayer/lib.lua")
+dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
 function damage_received(damage, message, entity_thats_responsible, is_fatal, projectile_thats_responsible)
     if is_fatal then

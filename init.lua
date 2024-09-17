@@ -1,7 +1,7 @@
 --IotaMultiplayer - Created by ImmortalDamned
 --Github https://github.com/XM666-Dev/IotaMultiplayer
 
-dofile_once("mods/iota_multiplayer/lib.lua")
+dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
 ModLuaFileAppend("mods/mnee/bindings.lua", "mods/iota_multiplayer/mnee.lua")
 ModLuaFileAppend("data/scripts/biomes/mountain/mountain_left_entrance.lua", "mods/iota_multiplayer/files/scripts/biomes/mountain/mountain_left_entrance_appends.lua")
@@ -70,6 +70,10 @@ function OnWorldInitialized()
 end
 
 function OnPlayerSpawned(player)
+    for i, player_index in pairs(mod.player_indexs) do
+        local coop_player = EntityLoad(("??SAV/player%i.xml"):format(i))
+        CrossCall("SetPlayerEntity", coop_player, player_index)
+    end
     player_spawned = true
     mod.primary_player = player
     if has_flag_run_or_add("iota_multiplayer.player_spawned_once") then
@@ -268,40 +272,120 @@ local function update_controls()
     end
 end
 
+local function get_item_index(item)
+    local item_component = EntityGetFirstComponentIncludingDisabled(item, "ItemComponent")
+    local ability_component = EntityGetFirstComponentIncludingDisabled(item, "AbilityComponent")
+    if item_component ~= nil and ability_component ~= nil then
+        return ComponentGetValue2(item_component, "inventory_slot") + (ComponentGetValue2(ability_component, "use_gun_script") and 0 or 4)
+    end
+end
+local function get_item(player, index)
+    local children = get_children(player)
+    local i, quick_inventory = table.find(children, function(v) return EntityGetName(v) == "inventory_quick" end)
+    local items = get_children(quick_inventory)
+    for i, item in ipairs(items) do
+        if get_item_index(item) == index then
+            table.sort(items, function(a, b)
+                local index_a = get_item_index(a)
+                local index_b = get_item_index(b)
+                return index_a ~= nil and index_b ~= nil and index_a < index_b
+            end)
+            return item, table.find(items, function(v) return v == item end)
+        end
+    end
+end
 local function update_gui()
-    local gui_enabled_player_data = Player(mod.gui_enabled_player)
-    if mod.gui_enabled_player == nil or gui_enabled_player_data.controls ~= nil and gui_enabled_player_data.controls.mButtonFrameInventory == get_frame_num_next() == gui_enabled_player_data:is_inventory_open() then
-        mod.gui_enabled_player = mod.camera_centered_player
-    end
-    if mod.gui_enabled_player ~= mod.previous_gui_enabled_player then
-        gui_enabled_player_data = Player(mod.gui_enabled_player)
-        local previous_gui_enabled_player_data = Player(mod.previous_gui_enabled_player)
-        if gui_enabled_player_data.gui ~= nil and previous_gui_enabled_player_data.gui ~= nil then
-            gui_enabled_player_data.gui.wallet_money_target = previous_gui_enabled_player_data.gui.wallet_money_target
-        end
-        if previous_gui_enabled_player_data.gui ~= nil then
-            EntityRemoveComponent(mod.previous_gui_enabled_player, previous_gui_enabled_player_data.gui._id)
-            EntityAddComponent2(mod.previous_gui_enabled_player, "InventoryGuiComponent")
-        end
-        mod.previous_gui_enabled_player = mod.gui_enabled_player
-    end
-    local players = get_players_including_disabled()
+    --local gui_enabled_player_data = Player(mod.gui_enabled_player)
+    --if mod.gui_enabled_player == nil or gui_enabled_player_data.controls ~= nil and gui_enabled_player_data.controls.mButtonFrameInventory == get_frame_num_next() == gui_enabled_player_data:is_inventory_open() then
+    --    mod.gui_enabled_player = mod.camera_centered_player
+    --end
+    --if mod.gui_enabled_player ~= mod.previous_gui_enabled_player then
+    --    gui_enabled_player_data = Player(mod.gui_enabled_player)
+    --    local previous_gui_enabled_player_data = Player(mod.previous_gui_enabled_player)
+    --    if gui_enabled_player_data.gui ~= nil and previous_gui_enabled_player_data.gui ~= nil then
+    --        gui_enabled_player_data.gui.wallet_money_target = previous_gui_enabled_player_data.gui.wallet_money_target
+    --    end
+    --    if previous_gui_enabled_player_data.gui ~= nil then
+    --        EntityRemoveComponent(mod.previous_gui_enabled_player, previous_gui_enabled_player_data.gui._id)
+    --        EntityAddComponent2(mod.previous_gui_enabled_player, "InventoryGuiComponent")
+    --    end
+    --    mod.previous_gui_enabled_player = mod.gui_enabled_player
+    --end
+    --local players = get_players_including_disabled()
+    --for i, player in ipairs(players) do
+    --    local player_data = Player(player)
+    --    if player_data.gui ~= nil then
+    --        set_component_enabled(player_data.gui._id, player == mod.gui_enabled_player)
+    --    end
+    --end
+    local players = get_players()
     for i, player in ipairs(players) do
         local player_data = Player(player)
-        if player_data.gui ~= nil then
-            set_component_enabled(player_data.gui._id, player == mod.gui_enabled_player)
+        if player_data.index == 1 then
+            for i = 0, 7 do
+                if InputIsKeyDown(30 + i) then
+                    local item, index = get_item(player, i)
+                    if item ~= nil then
+                        --player_data.inventory.mActiveItem = item
+                        --player_data.inventory.mActualActiveItem = item
+                        player_data.inventory.mSavedActiveItemIndex = index - 1
+                        player_data.inventory.mInitialized = false
+                        --player_data.inventory.mForceRefresh = true
+                    end
+                end
+            end
         end
     end
 end
 
 local function update_gui_post()
-    local players = get_players_including_disabled()
-    for i, player in ipairs(players) do
-        local player_data = Player(player)
-        if player_data.gui ~= nil then
-            set_component_enabled(player_data.gui._id, true)
+    --local players = get_players_including_disabled()
+    --for i, player in ipairs(players) do
+    --    local player_data = Player(player)
+    --    if player_data.gui ~= nil then
+    --        set_component_enabled(player_data.gui._id, true)
+    --    end
+    --end
+    --local players = get_players()
+    --for i, player in ipairs(players) do
+    --    local player_data = Player(player)
+    --    if player_data.index == 1 then
+    --        if InputIsKeyJustDown(30) then
+    --            local item, index = get_item(player, 0)
+    --            if item ~= nil then
+    --                player_data.inventory.mActiveItem = item
+    --                player_data.inventory.mActualActiveItem = item
+    --                player_data.inventory.mSavedActiveItemIndex = index - 1
+    --                player_data.inventory.mInitialized = false
+    --                --debug_print("update_gui_post", player_data.inventory.mSavedActiveItemIndex)
+    --            end
+    --        end
+    --        if InputIsKeyJustDown(31) then
+    --            local item, index = get_item(player, 1)
+    --            if item ~= nil then
+    --                player_data.inventory.mActiveItem = item
+    --                player_data.inventory.mActualActiveItem = item
+    --                player_data.inventory.mSavedActiveItemIndex = index - 1
+    --                player_data.inventory.mInitialized = false
+    --                --debug_print("update_gui_post", player_data.inventory.mSavedActiveItemIndex)
+    --            end
+    --        end
+    --    end
+    --end
+end
+
+local function update_indexs()
+    local player_indexs = {}
+    local flag = false
+    for player_index = 0, MAX_PLAYER_NUM - 1 do
+        if CrossCall("GetPlayerEntity", player_index) ~= nil then
+            if flag then
+                table.insert(player_indexs, player_index)
+            end
+            flag = true
         end
     end
+    mod.player_indexs = player_indexs
 end
 
 local function add_script_item_throw(item)
@@ -421,15 +505,7 @@ local function update_camera()
         end
         mod.previous_camera_centered_player = mod.camera_centered_player
     end
-    local primary_player_data = Player(mod.primary_player)
-    if primary_player_data.shooter ~= nil then
-        GameSetCameraFree(false)
-        primary_player_data.shooter().mDesiredCameraPos = camera_centered_player_data.shooter ~= nil and camera_centered_player_data.shooter().mDesiredCameraPos or { EntityGetTransform(mod.camera_centered_player) }
-    elseif mod.camera_centered_player ~= nil then
-        GameSetCameraFree(true)
-        local pos = camera_centered_player_data.shooter ~= nil and camera_centered_player_data.shooter().mDesiredCameraPos or { EntityGetTransform(mod.camera_centered_player) }
-        GameSetCameraPos(unpack(pos))
-    end
+    GameSetCameraFree(get_player_num() > 1)
     local players_including_disabled = get_players_including_disabled()
     for i, player in ipairs(players_including_disabled) do
         local player_data = Player(player)
@@ -512,13 +588,14 @@ function OnWorldPreUpdate()
         update_controls()
         update_gui()
         update_common()
+        update_camera()
     end
 end
 
 function OnWorldPostUpdate()
     if player_spawned then
+        update_indexs()
         update_gui_post()
-        update_camera()
         update_gui_mod()
     end
 end

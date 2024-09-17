@@ -154,6 +154,8 @@ iota_multiplayer.setting_friendly_fire_kick,Kick,,,,,,,,踢击,,,
 iota_multiplayer.settingdesc_friendly_fire_kick,Do players received friendly fire when kicked?,,,,,,,,玩家被踢击时是否受到友伤？,,,
 iota_multiplayer.setting_friendly_fire_kick_drop,Kick drop,,,,,,,,踢击掉落,,,
 iota_multiplayer.settingdesc_friendly_fire_kick_drop,Do players drop items when kicked?,,,,,,,,玩家被踢击时是否掉落物品？,,,
+iota_multiplayer.setting_friendly_fire_force,Force,,,,,,,,强制,,,
+iota_multiplayer.settingdesc_friendly_fire_force,Do players force friendly fire?,,,,,,,,玩家之间是否强制友伤？,,,
 iota_multiplayer.setting_camera,Camera,,,,,,,,摄像机,,,
 iota_multiplayer.settingdesc_camera,About camera tweaks,,,,,,,,摄像机调整相关,,,
 iota_multiplayer.setting_camera_zoom,Zoom,,,,,,,,缩放,,,
@@ -253,6 +255,14 @@ mod_settings = {
             }, {
                 ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick_drop") end,
                 ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick_drop") end,
+            }),
+            Table({
+                id = "friendly_fire_force",
+                value_default = false,
+                scope = MOD_SETTING_SCOPE_RUNTIME,
+            }, {
+                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_force") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_force") end,
             }),
         },
     }, {

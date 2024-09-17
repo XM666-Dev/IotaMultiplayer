@@ -1,4 +1,4 @@
-dofile_once("mods/iota_multiplayer/lib.lua")
+dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
 function polymorphing_to(string_entity_we_are_about_to_polymorph_to)
     local this_data = Player(string_entity_we_are_about_to_polymorph_to)

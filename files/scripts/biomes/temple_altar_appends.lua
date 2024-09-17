@@ -1,5 +1,5 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
-	dofile_once("mods/iota_multiplayer/lib.lua")
+	dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
 	local old_spawn_hp = spawn_hp
 	function _G.spawn_hp(x, y)

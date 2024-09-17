@@ -141,18 +141,20 @@ function new_id(s)
     return id
 end
 
-function serialize(v)
-    return (({
-        number = function(n) return ("%.16a"):format(n) end,
-        string = function(s) return ("%q"):format(s) end,
-        table = function(t)
-            local s = "{"
-            for k, v in pairs(t) do
-                s = s .. "[" .. serialize(k) .. "]=" .. serialize(v) .. ","
-            end
-            return s .. "}"
-        end,
-    })[type(v)] or tostring)(v)
+function serialize(value)
+    local value_type = type(value)
+    if value_type == "number" then
+        return ("%.16a"):format(value)
+    elseif value_type == "string" then
+        return ("%q"):format(value)
+    elseif value_type == "table" then
+        local t = {}
+        for k, v in pairs(value) do
+            table.insert(t, ("[%s]=%s,"):format(serialize(k), serialize(v)))
+        end
+        return ("{%s}"):format(table.concat(t))
+    end
+    return tostring(value)
 end
 
 function deserialize(s)
@@ -179,11 +181,11 @@ function get_language()
 end
 
 function debug_print(...)
-    local s = ""
     local t = { ... }
     for i, v in ipairs(t) do
-        s = s .. string.from(v) .. (i < #t and "," or "")
+        t[i] = string.from(v)
     end
+    local s = table.concat(t, ",")
     print(s)
     GamePrint(s)
 end
@@ -192,18 +194,15 @@ end
 
 --#region
 
-function string.from(v)
-    return (({
-        table = function(t)
-            local s = "{"
-            local i = 1
-            for k, v in pairs(t) do
-                s = s .. string.from(k) .. "=" .. string.from(v) .. (i < #t and "," or "")
-                i = i + 1
-            end
-            return s .. "}"
-        end,
-    })[type(v)] or tostring)(v)
+function string.from(value)
+    if type(value) == "table" then
+        local t = {}
+        for k, v in pairs(value) do
+            table.insert(t, ("%s=%s"):format(string.from(k), string.from(v)))
+        end
+        return ("{%s}"):format(table.concat(t, ","))
+    end
+    return tostring(value)
 end
 
 function string.asub(s, repl)
@@ -213,7 +212,7 @@ end
 function table.find(list, pred)
     for i, v in ipairs(list) do
         if pred(v) then
-            return i
+            return i, v
         end
     end
 end
@@ -319,6 +318,25 @@ function Metatable(accessors)
         end,
         __newindex = function(t, k, v)
             (setters[k] or rawset)(t, k, v)
+        end,
+    }
+end
+
+function Class(accessors)
+    local getters = {}
+    for k, accessor in pairs(accessors) do
+        getters[k] = accessor.get
+    end
+    local setters = {}
+    for k, accessor in pairs(accessors) do
+        setters[k] = accessor.set
+    end
+    return {
+        __index = function(t, k)
+            return getters[k](t, k)
+        end,
+        __newindex = function(t, k, v)
+            setters[k](t, k, v)
         end,
     }
 end

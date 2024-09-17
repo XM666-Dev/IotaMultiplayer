@@ -1,4 +1,4 @@
-dofile_once("mods/iota_multiplayer/lib.lua")
+dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
 local projectile = GetUpdatedEntityID()
 local projectile_component = EntityGetFirstComponent(projectile, "ProjectileComponent")
@@ -43,11 +43,17 @@ end)
 
 if enemy == nil then return end
 local enemy_x, enemy_y = EntityGetFirstHitboxCenter(enemy)
-local vector_x, vector_y = vec_sub(enemy_x, enemy_y, projectile_x, projectile_y)
-vector_x, vector_y = vec_normalize(vector_x, vector_y)
-vector_x, vector_y = vec_mult(vector_x, vector_y, speed)
-
 local velocity_component = EntityGetFirstComponent(projectile, "VelocityComponent")
 if velocity_component ~= nil then
-    ComponentSetValue2(velocity_component, "mVelocity", vector_x, vector_y)
+    ComponentSetValue2(velocity_component, "mVelocity", 0, 0)
 end
+GameShootProjectile(shooter, projectile_x, projectile_y, enemy_x, enemy_y, projectile, false)
+--shoot_projectile()
+--local vector_x, vector_y = vec_sub(enemy_x, enemy_y, projectile_x, projectile_y)
+--vector_x, vector_y = vec_normalize(vector_x, vector_y)
+--vector_x, vector_y = vec_mult(vector_x, vector_y, speed)
+--
+--local velocity_component = EntityGetFirstComponent(projectile, "VelocityComponent")
+--if velocity_component ~= nil then
+--    ComponentSetValue2(velocity_component, "mVelocity", vector_x, vector_y)
+--end

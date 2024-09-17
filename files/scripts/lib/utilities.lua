@@ -1,6 +1,8 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/sult.lua")
 dofile_once("mods/mnee/lib.lua")
 
+MAX_PLAYER_NUM = 4
+
 local function is_player_enabled(player)
     local player_data = Player(player)
     return not player_data.dead
@@ -20,6 +22,12 @@ local mod_metatable = Metatable {
         "mods/iota_multiplayer/player_positions.lua",
         "mods/iota_multiplayer/player_positions_value_date.lua",
         "mods/iota_multiplayer/player_positions_file_date.lua"
+    ),
+    player_indexs = SerializedAccessor(
+        VariableAccessor("iota_multiplayer.player_indexs", "value_string", "{}"),
+        "mods/iota_multiplayer/player_indexs.lua",
+        "mods/iota_multiplayer/player_indexs_value_date.lua",
+        "mods/iota_multiplayer/player_indexs_file_date.lua"
     ),
 }
 mod = setmetatable({}, mod_metatable)
@@ -77,6 +85,7 @@ function add_player(player)
     EntityAddComponent2(player, "LuaComponent", {
         script_kick = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
         script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
+        script_shot = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
         script_damage_received = "mods/iota_multiplayer/files/scripts/magic/player_damage.lua",
         script_polymorphing_to = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua",
     })
@@ -87,8 +96,15 @@ function add_player(player)
     })
 end
 
+--postcalls = {}
+--function postcall(f, ...)
+--    table.insert(postcalls, { f, ... })
+--end
+
 function load_player(x, y)
     local player = EntityLoad("data/entities/player.xml", x, y)
+    CrossCall("SetPlayerEntity", player, mod.max_index)
+    --postcall(CrossCall, "SetPlayerEntity", 0, mod.max_index)
     add_player(player)
     return player
 end
@@ -137,7 +153,7 @@ function set_dead(player, dead)
         player_data.damage_model.hp = player_data.damage_model.max_hp
         EntityInflictDamage(player, 0.04, "DAMAGE_PROJECTILE", "", "NONE", 0, 0)
         player_data.damage_model.hp = player_data.damage_model.max_hp
-        GamePrint(GameTextGet("$log_coop_resurrected_player", player_data.index))
+        GamePrintImportant(GameTextGet("$log_coop_resurrected_player", player_data.index))
         local protection_polymorph_entity = get_children(player, "iota_multiplayer.protection_polymorph")[1]
         if protection_polymorph_entity ~= nil then
             local protection_polymorph = EntityGetFirstComponent(protection_polymorph_entity, "GameEffectComponent")
@@ -147,6 +163,16 @@ function set_dead(player, dead)
         end
     end
     player_data.dead = dead
+end
+
+function get_player_num()
+    local num = 0
+    for i = 0, MAX_PLAYER_NUM - 1 do
+        if CrossCall("GetPlayerEntity", i) ~= nil then
+            num = num + 1
+        end
+    end
+    return num
 end
 
 function perk_spawn_with_data(x, y, perk_data, script_item_picked_up)

@@ -1,4 +1,8 @@
-﻿alpha-0.7.5-20240818
+﻿alpha-0.8-20240828
+-add multi gui
+-add camera center
+
+alpha-0.7.5-20240818
 -fix gui
 -improve autoaim
 

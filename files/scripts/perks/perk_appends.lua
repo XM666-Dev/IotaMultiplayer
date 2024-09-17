@@ -1,5 +1,5 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
-    dofile_once("mods/iota_multiplayer/lib.lua")
+    dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
     local perk_stats_metatable = Metatable {
         spawn_count = VariableAccessor("iota_multiplayer.spawn_count", "value_int", 1),

@@ -1,4 +1,4 @@
-dofile_once("mods/iota_multiplayer/lib.lua")
+dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
 local blocks = {}
 local function add_block(blocked)
@@ -25,4 +25,11 @@ function damage_about_to_be_received(damage, x, y, entity_thats_responsible, cri
         damage = not ModSettingGet("iota_multiplayer.friendly_fire_kick") and add_blocker(entity_thats_responsible, this) and 0 or damage * ModSettingGet("iota_multiplayer.friendly_fire_percent")
     end
     return damage, critical_hit_chance
+end
+
+function shot(projectile_entity_id)
+    local projectile = EntityGetFirstComponent(projectile_entity_id, "ProjectileComponent")
+    if ModSettingGet("iota_multiplayer.friendly_fire_force") and projectile ~= nil then
+        ComponentSetValue2(projectile, "mShooterHerdId", -1)
+    end
 end
