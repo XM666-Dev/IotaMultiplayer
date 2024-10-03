@@ -23,6 +23,10 @@ function set_component_enabled(component, enabled)
     EntitySetComponentIsEnabled(ComponentGetEntity(component), component, enabled)
 end
 
+function remove_component(component)
+    EntityRemoveComponent(ComponentGetEntity(component), component)
+end
+
 function get_children(entity, ...)
     return EntityGetAllChildren(entity, ...) or {}
 end
@@ -227,13 +231,17 @@ function table.filter(list, pred)
     return result
 end
 
-function table.iterate(list, comp, value)
-    for i, v in ipairs(list) do
-        if comp(v, value) then
-            value = v
-        end
-    end
-    return value
+function table.iterate(list, comp)
+    local t = table.copy(list)
+    table.sort(t, comp)
+    return t[1]
+    --local value
+    --for i, v in ipairs(list) do
+    --    if value == nil or comp(v, value) then
+    --        value = v
+    --    end
+    --end
+    --return value
 end
 
 function table.copy(t)
@@ -303,32 +311,11 @@ end
 
 --#endregion
 
-function Metatable(accessors)
-    local getters = {}
-    for k, accessor in pairs(accessors) do
-        getters[k] = accessor.get
-    end
-    local setters = {}
-    for k, accessor in pairs(accessors) do
-        setters[k] = accessor.set
-    end
-    return {
-        __index = function(t, k)
-            return (getters[k] or rawget)(t, k)
-        end,
-        __newindex = function(t, k, v)
-            (setters[k] or rawset)(t, k, v)
-        end,
-    }
-end
-
 function Class(accessors)
     local getters = {}
-    for k, accessor in pairs(accessors) do
-        getters[k] = accessor.get
-    end
     local setters = {}
     for k, accessor in pairs(accessors) do
+        getters[k] = accessor.get
         setters[k] = accessor.set
     end
     return {
@@ -367,40 +354,32 @@ function EntityAccessor(tag, pred)
     }
 end
 
-local metatable = {
-    __index = function(t, k)
-        return { ComponentGetValue2(t._id, k) }
-    end,
-    __newindex = function(t, k, v)
-        ComponentSetValue2(t._id, k, unpack(v))
-    end,
-}
 local component_metatable = {
     __index = function(t, k)
-        return ComponentGetValue2(t._id, k)
+        local v = { ComponentGetValue2(t._id, k) }
+        if #v > 1 then
+            return v
+        end
+        return v[1]
     end,
     __newindex = function(t, k, v)
+        if type(v) == "table" then
+            ComponentSetValue2(t._id, k, unpack(v))
+            return
+        end
         ComponentSetValue2(t._id, k, v)
-    end,
-    __call = function(t, ...)
-        return setmetatable(t, metatable)
     end,
 }
 function ComponentAccessor(f, ...)
     local args = { ... }
     local self = {}
     self.get = function(t, k)
-        local cached = t[self]
-        if cached == nil then
-            local entity = t.id
-            local component = f(entity, unpack(args))
-            if component == nil then
-                return nil
-            end
-            cached = { _id = component }
-            t[self] = cached
+        local component = f(t.id, unpack(args))
+        if component ~= nil then
+            local v = setmetatable({ _id = component }, component_metatable)
+            rawset(t, k, v)
+            return v
         end
-        return setmetatable(cached, component_metatable)
     end
     return self
 end
@@ -408,20 +387,20 @@ end
 function VariableAccessor(tag, field, default)
     local self = {}
     self.get = function(t, k)
-        local component = t[self]
+        local component = rawget(t, self)
         if component == nil then
             local entity = t.id
             component = EntityGetFirstComponent(entity, "VariableStorageComponent", tag) or EntityAddComponent2(entity, "VariableStorageComponent", { _tags = tag, [field] = default })
-            t[self] = component
+            rawset(t, self, component)
         end
         return ComponentGetValue2(component, field)
     end
     self.set = function(t, k, v)
-        local component = t[self]
+        local component = rawget(t, self)
         if component == nil then
             local entity = t.id
             component = EntityGetFirstComponent(entity, "VariableStorageComponent", tag) or EntityAddComponent2(entity, "VariableStorageComponent", { _tags = tag, [field] = default })
-            t[self] = component
+            rawset(t, self, component)
         end
         ComponentSetValue2(component, field, v)
     end

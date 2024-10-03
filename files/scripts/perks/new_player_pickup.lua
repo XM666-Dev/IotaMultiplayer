@@ -8,7 +8,7 @@ function item_pickup(entity_item, entity_pickupper, item_name)
         ui_description = "$log_coop_started",
         perk_icon = "mods/iota_multiplayer/files/items_gfx/perks/new_player.png",
     }, "mods/iota_multiplayer/files/scripts/perks/new_player_pickup.lua")
-    if mod.max_index < MAX_PLAYER_NUM then
+    if #get_players_including_disabled() < MAX_PLAYER_NUM then
         load_player(x, y)
     end
 end

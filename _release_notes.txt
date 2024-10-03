@@ -1,4 +1,13 @@
-﻿alpha-0.8-20240828
+﻿alpha-0.9-20241003
+-improve camera center
+-add dynamic camera zoom
+-improve shader compatibility
+-fix money sharing
+-improve dead player
+-improve gui
+-improve autoaim
+
+alpha-0.8-20240828
 -add multi gui
 -add camera center
 

@@ -1,38 +1,29 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/sult.lua")
 dofile_once("mods/mnee/lib.lua")
 
-MAX_PLAYER_NUM = 4
+MAX_PLAYER_NUM = 8
 
 local function is_player_enabled(player)
     local player_data = Player(player)
     return not player_data.dead
 end
-local mod_metatable = Metatable {
+local mod_class = Class {
     id = { get = GameGetWorldStateEntity },
-    primary_player = EntityAccessor("iota_multiplayer.primary_player"),
-    gui_enabled_player = EntityAccessor("iota_multiplayer.gui_enabled_player", is_player_enabled),
-    previous_gui_enabled_player = EntityAccessor("iota_multiplayer.previous_gui_enabled_player"),
-    camera_centered_player = EntityAccessor("iota_multiplayer.camera_centered_player", function(player)
-        return is_player_enabled(player) or #get_players() < 1
-    end),
-    previous_camera_centered_player = EntityAccessor("iota_multiplayer.previous_camera_centered_player"),
-    max_index = VariableAccessor("iota_multiplayer.max_index", "value_int"),
+    gui_enabled_index = VariableAccessor("iota_multiplayer.gui_enabled_index", "value_int"),
+    --previous_gui_enabled_index = VariableAccessor("iota_multiplayer.previous_gui_enabled_index", "value_int"),
+    camera_center_index = VariableAccessor("iota_multiplayer.camera_center_index", "value_int"),
+    --previous_camera_center_index = VariableAccessor("iota_multiplayer.previous_camera_center_index", "value_int"),
+    money = VariableAccessor("iota_multiplayer.money", "value_int"),
     player_positions = SerializedAccessor(
         VariableAccessor("iota_multiplayer.player_positions", "value_string", "{}"),
         "mods/iota_multiplayer/player_positions.lua",
         "mods/iota_multiplayer/player_positions_value_date.lua",
         "mods/iota_multiplayer/player_positions_file_date.lua"
     ),
-    player_indexs = SerializedAccessor(
-        VariableAccessor("iota_multiplayer.player_indexs", "value_string", "{}"),
-        "mods/iota_multiplayer/player_indexs.lua",
-        "mods/iota_multiplayer/player_indexs_value_date.lua",
-        "mods/iota_multiplayer/player_indexs_file_date.lua"
-    ),
 }
-mod = setmetatable({}, mod_metatable)
+mod = setmetatable({}, mod_class)
 
-local player_metatable = Metatable {
+local player_class = Class {
     controls = ComponentAccessor(EntityGetFirstComponent, "ControlsComponent"),
     shooter = ComponentAccessor(EntityGetFirstComponent, "PlatformShooterPlayerComponent"),
     listener = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "AudioListenerComponent"),
@@ -40,12 +31,13 @@ local player_metatable = Metatable {
     wallet = ComponentAccessor(EntityGetFirstComponent, "WalletComponent"),
     pick_upper = ComponentAccessor(EntityGetFirstComponent, "ItemPickUpperComponent"),
     damage_model = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "DamageModelComponent"),
-    sprite = ComponentAccessor(EntityGetFirstComponent, "SpriteComponent", "lukki_disable"),
-    aiming_reticle = ComponentAccessor(EntityGetFirstComponent, "SpriteComponent", "aiming_reticle"),
     genome = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "GenomeDataComponent"),
+    log = ComponentAccessor(EntityGetFirstComponent, "GameLogComponent"),
+    sprite = ComponentAccessor(EntityGetFirstComponent, "SpriteComponent", "character"),
+    aiming_reticle = ComponentAccessor(EntityGetFirstComponent, "SpriteComponent", "aiming_reticle"),
     character_data = ComponentAccessor(EntityGetFirstComponent, "CharacterDataComponent"),
-    inventory = ComponentAccessor(EntityGetFirstComponent, "Inventory2Component"),
     autoaim = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "LuaComponent", "iota_multiplayer.autoaim"),
+    --inventory = ComponentAccessor(EntityGetFirstComponent, "Inventory2Component"),
     index = VariableAccessor("iota_multiplayer.index", "value_int"),
     previous_aim_x = VariableAccessor("iota_multiplayer.previous_aim_x", "value_string"),
     previous_aim_y = VariableAccessor("iota_multiplayer.previous_aim_y", "value_string"),
@@ -54,6 +46,7 @@ local player_metatable = Metatable {
     damage_frame = VariableAccessor("iota_multiplayer.damage_frame", "value_int"),
     damage_message = VariableAccessor("iota_multiplayer.damage_message", "value_string"),
     damage_entity_thats_responsible = VariableAccessor("iota_multiplayer.damage_entity_thats_responsible", "value_int"),
+    load_frame = VariableAccessor("iota_multiplayer.load_frame", "value_int"),
     get_arm_r = ConstantAccessor(function(self)
         return get_children(self.id, "player_arm_r")[1]
     end),
@@ -74,14 +67,13 @@ local player_metatable = Metatable {
     end),
 }
 function Player(player)
-    return validate(player) and setmetatable({ id = player }, player_metatable) or {}
+    return validate(player) and setmetatable({ id = player }, player_class) or {}
 end
 
 function add_player(player)
     EntityAddTag(player, "iota_multiplayer.player")
-    mod.max_index = mod.max_index + 1
     local player_data = Player(player)
-    player_data.index = mod.max_index
+    player_data.index = #get_players_including_disabled()
     EntityAddComponent2(player, "LuaComponent", {
         script_kick = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
         script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
@@ -96,16 +88,11 @@ function add_player(player)
     })
 end
 
---postcalls = {}
---function postcall(f, ...)
---    table.insert(postcalls, { f, ... })
---end
-
 function load_player(x, y)
     local player = EntityLoad("data/entities/player.xml", x, y)
-    CrossCall("SetPlayerEntity", player, mod.max_index)
-    --postcall(CrossCall, "SetPlayerEntity", 0, mod.max_index)
     add_player(player)
+    local player_data = Player(player)
+    player_data.load_frame = GameGetFrameNum()
     return player
 end
 
@@ -114,16 +101,29 @@ function get_players_including_disabled()
 end
 
 function get_players()
-    return table.filter(get_players_including_disabled(), function(player)
+    return table.filter(EntityGetWithTag("iota_multiplayer.player"), function(player)
         local player_data = Player(player)
         return not player_data.dead
     end)
 end
 
+function get_player(index)
+    local players = get_players()
+    local i, player = table.find(players, function(player)
+        local player_data = Player(player)
+        return player_data.index == index
+    end)
+    return player
+end
+
 function set_dead(player, dead)
     local player_data = Player(player)
-    set_component_enabled(player_data.genome._id, not dead)
-    set_component_enabled(player_data.damage_model._id, not dead)
+    if player_data.damage_model ~= nil then
+        set_component_enabled(player_data.damage_model._id, not dead)
+    end
+    if player_data.genome ~= nil then
+        set_component_enabled(player_data.genome._id, not dead)
+    end
     local effect = get_game_effect(player, "POLYMORPH")
     if effect == nil then
         effect = get_game_effect(player, "POLYMORPH_RANDOM")
@@ -136,6 +136,18 @@ function set_dead(player, dead)
     end
     if dead then
         EntityRemoveTag(player, "hittable")
+
+        local protection_polymorph, protection_polymorph_entity = GetGameEffectLoadTo(player, "PROTECTION_POLYMORPH", true)
+        ComponentSetValue2(protection_polymorph, "frames", -1)
+        EntityAddTag(protection_polymorph_entity, "iota_multiplayer.protection_polymorph")
+
+        if player_data.sprite ~= nil then
+            EntityRefreshSprite(player, player_data.sprite._id)
+            if effect ~= nil then
+                player_data.sprite.alpha = 0.25
+            end
+        end
+
         if player_data.controls ~= nil then
             local controls_component = player_data.controls._id
             for k in pairs(ComponentGetMembers(controls_component) or {}) do
@@ -144,16 +156,9 @@ function set_dead(player, dead)
                 end
             end
         end
-        local protection_polymorph, protection_polymorph_entity = GetGameEffectLoadTo(player, "PROTECTION_POLYMORPH", true)
-        ComponentSetValue2(protection_polymorph, "frames", -1)
-        EntityAddTag(protection_polymorph_entity, "iota_multiplayer.protection_polymorph")
     else
         EntityAddTag(player, "hittable")
-        GamePlayAnimation(player, "intro_stand_up", 2)
-        player_data.damage_model.hp = player_data.damage_model.max_hp
-        EntityInflictDamage(player, 0.04, "DAMAGE_PROJECTILE", "", "NONE", 0, 0)
-        player_data.damage_model.hp = player_data.damage_model.max_hp
-        GamePrintImportant(GameTextGet("$log_coop_resurrected_player", player_data.index))
+
         local protection_polymorph_entity = get_children(player, "iota_multiplayer.protection_polymorph")[1]
         if protection_polymorph_entity ~= nil then
             local protection_polymorph = EntityGetFirstComponent(protection_polymorph_entity, "GameEffectComponent")
@@ -161,18 +166,16 @@ function set_dead(player, dead)
                 ComponentSetValue2(protection_polymorph, "frames", 0)
             end
         end
-    end
-    player_data.dead = dead
-end
 
-function get_player_num()
-    local num = 0
-    for i = 0, MAX_PLAYER_NUM - 1 do
-        if CrossCall("GetPlayerEntity", i) ~= nil then
-            num = num + 1
+        GamePlayAnimation(player, "intro_stand_up", 2)
+        GamePrintImportant(GameTextGet("$log_coop_resurrected_player", player_data.index))
+
+        if player_data.damage_model ~= nil then
+            player_data.damage_model.hp = 0.04
+            player_data.damage_model.is_on_fire = false
         end
     end
-    return num
+    player_data.dead = dead
 end
 
 function perk_spawn_with_data(x, y, perk_data, script_item_picked_up)

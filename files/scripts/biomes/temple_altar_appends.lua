@@ -13,7 +13,7 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
 				})
 				if filename == "data/entities/items/pickup/heart_fullhp_temple.xml" then
 					EntityAddComponent2(entity, "LuaComponent", {
-						script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/temple_heart_pickup.lua",
+						script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/respawn_pickup.lua",
 						execute_every_n_frame = -1,
 					})
 				end

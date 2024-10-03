@@ -40,7 +40,7 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
                 return GameTextGet("$iota_multiplayer.bindingsdesc_player", tostring(i))
             end,
             is_hidden = function()
-                return i > mod.max_index
+                return i > #get_players_including_disabled()
             end,
         }
         bindings["iota_multiplayer" .. i] = {
