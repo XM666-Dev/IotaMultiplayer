@@ -213,6 +213,18 @@ function string.asub(s, repl)
     return s:gsub('(%g+)%s*=%s*"(.-)"', repl)
 end
 
+function string.raw(s)
+    local bytes = {}
+    local t = { s:byte(1, #s) }
+    for i, v in ipairs(t) do
+        if v < 48 or v > 57 and v < 65 or v > 90 and v < 97 or v > 122 then
+            table.insert(bytes, 37)
+        end
+        table.insert(bytes, v)
+    end
+    return string.char(unpack(bytes))
+end
+
 function table.find(list, pred)
     for i, v in ipairs(list) do
         if pred(v) then
@@ -232,16 +244,13 @@ function table.filter(list, pred)
 end
 
 function table.iterate(list, comp)
-    local t = table.copy(list)
-    table.sort(t, comp)
-    return t[1]
-    --local value
-    --for i, v in ipairs(list) do
-    --    if value == nil or comp(v, value) then
-    --        value = v
-    --    end
-    --end
-    --return value
+    local value
+    for i, v in ipairs(list) do
+        if value == nil or comp(v, value) then
+            value = v
+        end
+    end
+    return value
 end
 
 function table.copy(t)

@@ -50,6 +50,9 @@ if zoom ~= 1 then
         VIRTUAL_RESOLUTION_Y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y) * zoom,
     })
     local flag = true
+    local function apply_zoom(s)
+        return ("(%s) * internal_zoom.xy - internal_zoom.xy * 0.5 + 0.5"):format(s)
+    end
     ModTextFileSetContent("data/shaders/post_final.vert", ModTextFileGetContent("data/shaders/post_final.vert")
         :gsub("camera_inv_zoom_ratio", function()
             if flag then
@@ -59,12 +62,53 @@ if zoom ~= 1 then
             return string.format("%f", zoom)
         end, 2)
         :gsub("\n", "\nuniform vec4 internal_zoom;", 1)
-        :gsub("gl_MultiTexCoord0", "(gl_MultiTexCoord0 * internal_zoom - internal_zoom * 0.5 + 0.5)")
-        :gsub("gl_MultiTexCoord1", "(gl_MultiTexCoord1 * internal_zoom - internal_zoom * 0.5 + 0.5)"))
+        :gsub(("gl_TexCoord[0].xy"):raw(), apply_zoom)
+        :gsub(("gl_TexCoord[0].zw + vec2(camera_subpixel_offset.x, camera_subpixel_offset.y)"):raw(), apply_zoom)
+        :gsub(("gl_TexCoord[1].xy"):raw(), apply_zoom)
+    --:gsub("gl_MultiTexCoord0", "(gl_MultiTexCoord0 * internal_zoom - internal_zoom * 0.5 + 0.5)")
+    --:gsub("gl_MultiTexCoord1", "(gl_MultiTexCoord1 * internal_zoom - internal_zoom * 0.5 + 0.5)")
+    )
+end
+local function get_camera_info()
+    local players = table.filter(get_players(), function(v) return Player(v).load_frame ~= GameGetFrameNum() end)
+    local positions = {}
+    local camera_center_player = get_player(mod.camera_center_index)
+    local center_x, center_y = EntityGetTransform(camera_center_player)
+    local min_resolution_x, min_resolution_y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X), tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y)
+    local max_resolution_x, max_resolution_y = tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_X")), tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_Y"))
+    local safe_w = max_resolution_x - min_resolution_x * 0.5
+    local safe_h = max_resolution_y - min_resolution_y * 0.5
+    for i, player in ipairs(players) do
+        local x, y
+        local player_data = Player(player)
+        if player_data.shooter ~= nil then
+            x, y = unpack(player_data.shooter.mDesiredCameraPos)
+        else
+            x, y = EntityGetTransform(player)
+        end
+        --if math.abs(x - center_x) < safe_w and math.abs(y - center_y) < safe_h then
+        table.insert(positions, { x, y })
+        --end
+    end
+    local min_x, min_y = table.iterate(positions, function(a, b)
+        return a[1] < b[1]
+    end)[1], table.iterate(positions, function(a, b)
+        return a[2] < b[2]
+    end)[2]
+    local max_x, max_y = table.iterate(positions, function(a, b)
+        return a[1] > b[1]
+    end)[1], table.iterate(positions, function(a, b)
+        return a[2] > b[2]
+    end)[2]
+    local camera_x, camera_y = (min_x + max_x) / 2, (min_y + max_y) / 2
+    local resolution_x, resolution_y = math.min(max_x - min_x + min_resolution_x, max_resolution_x), math.min(max_y - min_y + min_resolution_y, max_resolution_y)
+    local internal_zoom = math.max(resolution_x / max_resolution_x, resolution_y / max_resolution_y)
+    return camera_x, camera_y, internal_zoom
 end
 local f = GameGetCameraBounds
 function GameGetCameraBounds()
     local x, y, w, h = f()
+    local camera_x, camera_y, internal_zoom = get_camera_info()
     return x, y, w * internal_zoom, h * internal_zoom
 end
 
@@ -509,7 +553,7 @@ local function update_camera()
             set_component_enabled(player_data.listener._id, player_data.index == mod.camera_center_index)
         end
     end
-    if internal_zoom < 1 then
+    if zoom > 1 then
         local electricity_receiver = EntityGetFirstComponent(mod.id, "ElectricityReceiverComponent")
         if electricity_receiver ~= nil then
             ComponentSetValue2(electricity_receiver, "mLastFrameElectrified", get_frame_num_next())
@@ -518,50 +562,12 @@ local function update_camera()
 end
 
 local function update_camera_post()
-    local players = table.filter(get_players(), function(v)
-        local player_data = Player(v)
-        return player_data.load_frame ~= GameGetFrameNum()
-    end)
-    if #players > 0 then
-        local positions = {}
-        local camera_center_player = get_player(mod.camera_center_index)
-        if camera_center_player ~= nil then
-            local center_x, center_y = EntityGetTransform(camera_center_player)
-            local min_resolution_x, min_resolution_y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X), tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y)
-            local max_resolution_x, max_resolution_y = tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_X")), tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_Y"))
-            local safe_w = max_resolution_x - min_resolution_x * 0.5
-            local safe_h = max_resolution_y - min_resolution_y * 0.5
-            for i, player in ipairs(players) do
-                local x, y
-                local player_data = Player(player)
-                if player_data.shooter ~= nil then
-                    x, y = unpack(player_data.shooter.mDesiredCameraPos)
-                else
-                    x, y = EntityGetTransform(player)
-                end
-                if math.abs(x - center_x) < safe_w and math.abs(y - center_y) < safe_h then
-                    table.insert(positions, { x, y })
-                end
-            end
-            local min_x, min_y = table.iterate(positions, function(a, b)
-                return a[1] < b[1]
-            end)[1], table.iterate(positions, function(a, b)
-                return a[2] < b[2]
-            end)[2]
-            local max_x, max_y = table.iterate(positions, function(a, b)
-                return a[1] > b[1]
-            end)[1], table.iterate(positions, function(a, b)
-                return a[2] > b[2]
-            end)[2]
-            local resolution_x, resolution_y = math.min(max_x - min_x + min_resolution_x, max_resolution_x), math.min(max_y - min_y + min_resolution_y, max_resolution_y)
-            internal_zoom = math.max(resolution_x / max_resolution_x, resolution_y / max_resolution_y)
-            GameSetPostFxParameter("internal_zoom", internal_zoom, internal_zoom, internal_zoom, internal_zoom)
-            local camera_x, camera_y = (min_x + max_x) / 2, (min_y + max_y) / 2
-            GameSetCameraPos(camera_x, camera_y)
-            GameSetCameraFree(true)
-        end
-    end
-    if internal_zoom < 1 then
+    if #get_players() < 1 then return end
+    local camera_x, camera_y, internal_zoom = get_camera_info()
+    GameSetCameraPos(camera_x, camera_y)
+    GameSetCameraFree(true)
+    GameSetPostFxParameter("internal_zoom", internal_zoom, internal_zoom, internal_zoom, internal_zoom)
+    if zoom > 1 then
         local entities = EntityGetInRadius(0, 0, math.huge)
         for i, entity in ipairs(entities) do
             local sprites = EntityGetComponent(entity, "SpriteComponent") or {}
