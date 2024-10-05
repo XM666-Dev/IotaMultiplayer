@@ -163,7 +163,7 @@ local function update_controls()
             entity_shoot(player)
             local ai = EntityGetFirstComponentIncludingDisabled(player, "AnimalAIComponent")
             local attacks = EntityGetComponent(player, "AIAttackComponent") or {}
-            local attack_table = get_attack_table(ai, attacks[#attacks])
+            local attack_table = get_attack_table(player, ai, attacks)
             player_data.controls.polymorph_next_attack_frame = get_frame_num_next() + attack_table.frames_between
         end
 
@@ -443,9 +443,16 @@ local function add_script_throw(item)
         add_script_throw(child)
     end
 end
+local share_class = Class {
+    shared_indexs = VariableAccessor("iota_multiplayer.shared_indexs", "value_string", "{}"),
+}
+local function Share(id)
+    return setmetatable({ id = id }, share_class)
+end
 local function update_common()
     local players = get_players()
     local players_including_disabled = get_players_including_disabled()
+
     if mnee.mnin_bind("iota_multiplayer", "toggle_teleport", true, true) then
         local camera_center_player = get_player(mod.camera_center_index)
         local to_x, to_y = EntityGetTransform(camera_center_player)
@@ -457,6 +464,7 @@ local function update_common()
             end
         end
     end
+
     if ModSettingGet("iota_multiplayer.share_money") then
         for i, player in ipairs(players) do
             local player_data = Player(player)
@@ -472,38 +480,68 @@ local function update_common()
             end
         end
     end
+
     for i, player in ipairs(players) do
         local player_data = Player(player)
         if player_data.pick_upper ~= nil then
             player_data.pick_upper.is_immune_to_kicks = not ModSettingGet("iota_multiplayer.friendly_fire_kick_drop")
         end
-        local items = GameGetAllInventoryItems(player) or {}
+
+        local items = get_inventory_items(player)
         for i, item in ipairs(items) do
             add_script_throw(item)
         end
+
         if player_data.damage_model ~= nil then
             player_data.damage_model.wait_for_kill_flag_on_death = #players > 1
             if player_data.damage_model.hp < 0 then
                 set_dead(player, true)
             end
         end
+
+        local x, y = EntityGetTransform(player)
+        local coop_respawn = EntityGetInRadiusWithTag(x, y, 100, "coop_respawn")[1]
+        if coop_respawn ~= nil then
+            local to_x, to_y = EntityGetTransform(coop_respawn)
+            local dead_players = table.filter(players_including_disabled, function(v) return Player(v).dead end)
+            for i, dead_player in ipairs(dead_players) do
+                local dead_player_data = Player(dead_player)
+                if dead_player_data:mnin_bind("interact", true, true) then
+                    local coop_respawn_data = Share(coop_respawn)
+                    local shared_indexs = deserialize(coop_respawn_data.shared_indexs)
+                    if table.find(shared_indexs, function(v) return v == dead_player_data.index end) then goto continue end
+                    table.insert(shared_indexs, dead_player_data.index)
+                    coop_respawn_data.shared_indexs = serialize(shared_indexs)
+
+                    set_dead(dead_player, false)
+                    local from_x, from_y = EntityGetTransform(dead_player)
+                    teleport(dead_player, from_x, from_y, to_x, to_y)
+
+                    if #shared_indexs == #get_players_including_disabled() then
+                        local interactable = EntityGetFirstComponent(coop_respawn, "InteractableComponent")
+                        set_component_enabled(interactable, false)
+                    end
+                end
+                ::continue::
+            end
+        end
     end
+
     for i, player in ipairs(players_including_disabled) do
         local player_data = Player(player)
-        if player_data.dead then
-            GamePlayAnimation(player, "intro_sleep", 2)
-        end
         local arm_r = player_data:get_arm_r()
         if arm_r ~= nil and player_data.sprite ~= nil then
-            local stand = player_data.sprite.rect_animation ~= "intro_sleep" and player_data.sprite.rect_animation ~= "intro_stand_up"
-            EntitySetName(arm_r, stand and "arm_r" or "")
-            EntitySetComponentsWithTagEnabled(arm_r, "with_item", stand)
+            local intro = player_data.sprite.rect_animation == "intro_sleep" or player_data.sprite.rect_animation == "intro_stand_up"
+            EntitySetName(arm_r, intro and "" or "arm_r")
+            EntitySetComponentsWithTagEnabled(arm_r, "with_item", not intro)
         end
+
         if player_data.aiming_reticle ~= nil then
             local aim, aim_unbound, aim_emulated = player_data:mnin_stick("aim")
             player_data.aiming_reticle.visible = not aim_unbound and not player_data.dead
         end
     end
+
     if #players < 1 then
         local damaged_players = table.copy(players_including_disabled)
         table.sort(damaged_players, function(a, b)
@@ -523,6 +561,7 @@ local function update_common()
         end
         GameSetCameraFree(false)
     end
+
     local player_positions = {}
     for i, player in ipairs(players_including_disabled) do
         local x, y = EntityGetTransform(player)

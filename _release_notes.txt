@@ -1,4 +1,9 @@
-﻿alpha-0.9.1-20241003
+﻿alpha-0.9.2-20241005
+-fix polymorph
+-improve heart and refresh sharing
+-improve resurrect
+
+alpha-0.9.1-20241003
 -fix respawn
 
 alpha-0.9-20241003

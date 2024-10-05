@@ -1,1 +1,6 @@
-<Entity tags="coop_respawn" serialize="1" />
+<Entity tags="coop_respawn">
+    <InteractableComponent
+        radius="100"
+        ui_text="$iota_multiplayer.respawn"
+    ></InteractableComponent>
+</Entity>

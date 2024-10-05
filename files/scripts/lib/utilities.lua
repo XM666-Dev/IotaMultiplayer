@@ -124,15 +124,16 @@ function set_dead(player, dead)
     if player_data.genome ~= nil then
         set_component_enabled(player_data.genome._id, not dead)
     end
-    local effect = get_game_effect(player, "POLYMORPH")
-    if effect == nil then
-        effect = get_game_effect(player, "POLYMORPH_RANDOM")
+    local polymorph
+    local children = get_children(player)
+    for i, child in ipairs(children) do
+        local effect = EntityGetFirstComponentIncludingDisabled(child, "GameEffectComponent")
+        if effect ~= nil and ComponentGetValue2(effect, "mSerializedData") ~= "" then
+            polymorph = effect
+        end
     end
-    if effect == nil then
-        effect = get_game_effect(player, "POLYMORPH_UNSTABLE")
-    end
-    if effect ~= nil then
-        set_component_enabled(effect, not dead)
+    if polymorph ~= nil then
+        set_component_enabled(polymorph, not dead)
     end
     if dead then
         EntityRemoveTag(player, "hittable")
@@ -141,11 +142,13 @@ function set_dead(player, dead)
         ComponentSetValue2(protection_polymorph, "frames", -1)
         EntityAddTag(protection_polymorph_entity, "iota_multiplayer.protection_polymorph")
 
-        if player_data.sprite ~= nil then
-            EntityRefreshSprite(player, player_data.sprite._id)
-            if effect ~= nil then
-                player_data.sprite.alpha = 0.25
+        GamePlayAnimation(player, "intro_sleep", 0x7FFFFFFF)
+        local sprites = EntityGetComponent(player, "SpriteComponent") or {}
+        for i, sprite in ipairs(sprites) do
+            if polymorph ~= nil then
+                ComponentSetValue2(sprite, "alpha", 0.25)
             end
+            EntityRefreshSprite(player, sprite)
         end
 
         if player_data.controls ~= nil then
@@ -167,7 +170,13 @@ function set_dead(player, dead)
             end
         end
 
-        GamePlayAnimation(player, "intro_stand_up", 2)
+        GamePlayAnimation(player, "intro_stand_up", 0x7FFFFFFF)
+        local sprites = EntityGetComponent(player, "SpriteComponent") or {}
+        for i, sprite in ipairs(sprites) do
+            if polymorph ~= nil then
+                ComponentSetValue2(sprite, "alpha", 1)
+            end
+        end
         GamePrintImportant(GameTextGet("$log_coop_resurrected_player", player_data.index))
 
         if player_data.damage_model ~= nil then

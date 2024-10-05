@@ -160,7 +160,7 @@ iota_multiplayer.setting_camera,Camera,,,,,,,,摄像机,,,
 iota_multiplayer.settingdesc_camera,About camera tweaks,,,,,,,,摄像机调整相关,,,
 iota_multiplayer.setting_camera_zoom,Zoom,,,,,,,,缩放,,,
 iota_multiplayer.settingdesc_camera_zoom,Camera zoom multiplier.,,,,,,,,摄像机的缩放倍数。,,,
-iota_multiplayer.menugiveup,Give up,,,,,,,,放弃,,,
+iota_multiplayer.respawn,Press $0 to resurrect,,,,,,,,按 $0 复活,,,
 ]])
 local function get_language()
     return ({

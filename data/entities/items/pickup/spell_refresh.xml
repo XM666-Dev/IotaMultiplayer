@@ -27,7 +27,7 @@
 		play_pick_sound="0"
 		stats_count_as_item_pick_up="0"
 		auto_pickup="1"
-		is_pickable="0"
+		item_pickup_radius="0"
 	></ItemComponent>
 
 	<LuaComponent

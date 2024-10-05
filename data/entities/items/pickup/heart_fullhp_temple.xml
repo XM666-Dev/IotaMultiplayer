@@ -4,7 +4,7 @@
             script_item_picked_up="data/scripts/items/heart_fullhp_temple.lua"
         ></LuaComponent>
         <ItemComponent
-            is_pickable="0"
+            item_pickup_radius="0"
         ></ItemComponent>
     </Base>
     <CollisionTriggerComponent
@@ -27,7 +27,6 @@
     ></CollisionTriggerComponent>
     <LuaComponent
         script_collision_trigger_hit="mods/iota_multiplayer/files/scripts/items/share_trigger.lua"
-        script_item_picked_up="mods/iota_multiplayer/files/scripts/items/respawn_pickup.lua"
         execute_every_n_frame="-1"
     ></LuaComponent>
 </Entity>

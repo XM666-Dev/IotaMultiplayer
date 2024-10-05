@@ -72,8 +72,8 @@ function get_attack_index(attacks)
     return index
 end
 
-function get_attack_table(ai, attack)
-    local animation = "attack_ranged"
+function get_attack_table(entity, ai, attacks)
+    local animation_name = "attack_ranged"
     local frames_between
     local action_frame
     local entity_file
@@ -90,18 +90,24 @@ function get_attack_table(ai, attack)
         offset_x = ComponentGetValue2(ai, "attack_ranged_offset_x")
         offset_y = ComponentGetValue2(ai, "attack_ranged_offset_y")
     end
-    if attack ~= nil then
-        animation = ComponentGetValue2(attack, "animation_name")
-        frames_between = ComponentGetValue2(attack, "frames_between")
-        action_frame = ComponentGetValue2(attack, "attack_ranged_action_frame")
-        entity_file = ComponentGetValue2(attack, "attack_ranged_entity_file")
-        entity_count_min = ComponentGetValue2(attack, "attack_ranged_entity_count_min")
-        entity_count_max = ComponentGetValue2(attack, "attack_ranged_entity_count_max")
-        offset_x = ComponentGetValue2(attack, "attack_ranged_offset_x")
-        offset_y = ComponentGetValue2(attack, "attack_ranged_offset_y")
+    for i, attack in ipairs(attacks) do
+        SetRandomSeed(get_frame_num_next())
+        if Random(100) <= ComponentGetValue2(attack, "use_probability") then
+            animation_name = ComponentGetValue2(attack, "animation_name")
+            frames_between = ComponentGetValue2(attack, "frames_between")
+            action_frame = ComponentGetValue2(attack, "attack_ranged_action_frame")
+            entity_file = ComponentGetValue2(attack, "attack_ranged_entity_file")
+            entity_count_min = ComponentGetValue2(attack, "attack_ranged_entity_count_min")
+            entity_count_max = ComponentGetValue2(attack, "attack_ranged_entity_count_max")
+            offset_x = ComponentGetValue2(attack, "attack_ranged_offset_x")
+            offset_y = ComponentGetValue2(attack, "attack_ranged_offset_y")
+        end
+    end
+    if entity_file == "data/entities/projectiles/acidshot.xml" and EntityGetFilename(entity) ~= "data/entities/animals/acidshooter.xml" then
+        return
     end
     return {
-        animation = animation,
+        animation_name = animation_name,
         frames_between = frames_between,
         action_frame = action_frame,
         entity_file = entity_file,
@@ -115,7 +121,7 @@ end
 function get_attack_ranged_pos(entity)
     local ai = EntityGetFirstComponentIncludingDisabled(entity, "AnimalAIComponent")
     local attacks = EntityGetComponent(entity, "AIAttackComponent") or {}
-    local attack_table = get_attack_table(ai, attacks[#attacks])
+    local attack_table = get_attack_table(entity, ai, attacks)
     local x, y, rotation, scale_x, scale_y = EntityGetTransform(entity)
     return transform_mult(x, y, rotation, scale_x, scale_y, attack_table.offset_x, attack_table.offset_y, 0, 1, 1)
 end
@@ -123,7 +129,7 @@ end
 function entity_shoot(shooter)
     local ai = EntityGetFirstComponentIncludingDisabled(shooter, "AnimalAIComponent")
     local attacks = EntityGetComponent(shooter, "AIAttackComponent") or {}
-    local attack_table = get_attack_table(ai, attacks[#attacks])
+    local attack_table = get_attack_table(shooter, ai, attacks)
     local controls = EntityGetFirstComponent(shooter, "ControlsComponent")
     if controls ~= nil then
         local x, y = get_attack_ranged_pos(shooter)
