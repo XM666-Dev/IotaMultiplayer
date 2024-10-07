@@ -10,6 +10,7 @@ function electricity_receiver_electrified()
         local emitters = EntityGetComponent(entity, "SpriteParticleEmitterComponent") or {}
         for i, emitter in ipairs(emitters) do
             ComponentSetValue2(emitter, "emissive", false)
+            ComponentSetValue2(emitter, "z_index", -math.huge)
         end
     end
 end

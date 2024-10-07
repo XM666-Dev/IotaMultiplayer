@@ -107,11 +107,20 @@ function get_players()
     end)
 end
 
-function get_player(index)
-    local players = get_players()
+function get_player_at_index_including_disabled(index)
+    local players = EntityGetWithTag("iota_multiplayer.player")
     local i, player = table.find(players, function(player)
         local player_data = Player(player)
         return player_data.index == index
+    end)
+    return player
+end
+
+function get_player_at_index(index)
+    local players = EntityGetWithTag("iota_multiplayer.player")
+    local i, player = table.find(players, function(player)
+        local player_data = Player(player)
+        return player_data.index == index and not player_data.dead
     end)
     return player
 end
@@ -150,6 +159,7 @@ function set_dead(player, dead)
             end
             EntityRefreshSprite(player, sprite)
         end
+        GamePrintImportant("$log_coop_partner_is_dead")
 
         if player_data.controls ~= nil then
             local controls_component = player_data.controls._id

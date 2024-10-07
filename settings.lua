@@ -284,6 +284,14 @@ mod_settings = {
                 ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom") end,
                 ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom") end,
             }),
+            Table({
+                id = "camera_unique",
+                value_default = false,
+                scope = MOD_SETTING_SCOPE_RUNTIME,
+            }, {
+                ui_name = function() return "Unique" end,
+                ui_description = function() return "Camera only follows unique player." end,
+            }),
         },
     }, {
         ui_name = function() return get_text("iota_multiplayer.setting_camera") end,

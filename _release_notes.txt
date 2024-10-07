@@ -1,4 +1,11 @@
-﻿alpha-0.9.2-20241005
+﻿alpha-0.9.3-20241007
+-add camera unique
+-improve compatibility
+-add corpse sharing (not completed now)
+-fix hint
+-fix sth
+
+alpha-0.9.2-20241005
 -fix polymorph
 -improve heart and refresh sharing
 -improve resurrect

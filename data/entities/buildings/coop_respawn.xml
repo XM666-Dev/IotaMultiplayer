@@ -1,6 +1,6 @@
 <Entity tags="coop_respawn">
-    <InteractableComponent
-        radius="100"
-        ui_text="$iota_multiplayer.respawn"
-    ></InteractableComponent>
+    <VariableStorageComponent
+        _tags="iota_multiplayer.shared_indexs"
+        value_string="{}"
+    ></VariableStorageComponent>
 </Entity>
