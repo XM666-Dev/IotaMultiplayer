@@ -19,7 +19,7 @@ function shot(projectile)
     local velocity_direction = get_direction(0, 0, velocity_x, velocity_y)
 
     local shooter_data = Player(shooter)
-    local x, y = unpack(shooter_data.controls.mAimingVectorNormalized)
+    local x, y = shooter_data.controls.mAimingVectorNormalized()
     local length = x * x + y * y
     local angle = math.pi / 4 * length
 

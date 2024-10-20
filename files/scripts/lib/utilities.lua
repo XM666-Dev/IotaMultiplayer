@@ -3,10 +3,6 @@ dofile_once("mods/mnee/lib.lua")
 
 MAX_PLAYER_NUM = 8
 
-local function is_player_enabled(player)
-    local player_data = Player(player)
-    return not player_data.dead
-end
 local mod_class = Class {
     id = { get = GameGetWorldStateEntity },
     gui_enabled_index = VariableAccessor("iota_multiplayer.gui_enabled_index", "value_int"),
@@ -32,6 +28,7 @@ local player_class = Class {
     pick_upper = ComponentAccessor(EntityGetFirstComponent, "ItemPickUpperComponent"),
     damage_model = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "DamageModelComponent"),
     genome = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "GenomeDataComponent"),
+    alive = ComponentAccessor(EntityGetFirstComponentIncludingDisabled, "StreamingKeepAliveComponent"),
     log = ComponentAccessor(EntityGetFirstComponent, "GameLogComponent"),
     sprite = ComponentAccessor(EntityGetFirstComponent, "SpriteComponent", "character"),
     aiming_reticle = ComponentAccessor(EntityGetFirstComponent, "SpriteComponent", "aiming_reticle"),
@@ -47,6 +44,22 @@ local player_class = Class {
     damage_message = VariableAccessor("iota_multiplayer.damage_message", "value_string"),
     damage_entity_thats_responsible = VariableAccessor("iota_multiplayer.damage_entity_thats_responsible", "value_int"),
     load_frame = VariableAccessor("iota_multiplayer.load_frame", "value_int"),
+    add = ConstantAccessor(function(self)
+        EntityAddTag(self.id, "iota_multiplayer.player")
+        EntityAddComponent2(self.id, "LuaComponent", {
+            script_kick = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
+            script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
+            script_shot = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
+            script_damage_received = "mods/iota_multiplayer/files/scripts/magic/player_damage.lua",
+            script_polymorphing_to = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua",
+        })
+        EntityAddComponent2(self.id, "LuaComponent", {
+            _tags = "iota_multiplayer.autoaim",
+            _enabled = false,
+            script_shot = "mods/iota_multiplayer/files/scripts/perks/autoaim_shot.lua",
+        })
+        self.index = #get_players_including_disabled()
+    end),
     get_arm_r = ConstantAccessor(function(self)
         return get_children(self.id, "player_arm_r")[1]
     end),
@@ -65,33 +78,92 @@ local player_class = Class {
     jpad_check = ConstantAccessor(function(self, bind_id)
         return mnee.jpad_check(mnee.get_pbd(mnee.get_bindings()["iota_multiplayer" .. self.index][bind_id]).main)
     end),
+    set_dead = ConstantAccessor(function(self, dead)
+        if self.damage_model ~= nil then
+            set_component_enabled(self.damage_model._id, not dead)
+        end
+        if self.genome ~= nil then
+            set_component_enabled(self.genome._id, not dead)
+        end
+        if self.alive ~= nil then
+            --set_component_enabled(self.alive._id, not dead)
+        end
+        local polymorph
+        local children = get_children(self.id)
+        for i, child in ipairs(children) do
+            local effect = EntityGetFirstComponentIncludingDisabled(child, "GameEffectComponent")
+            if effect ~= nil and ComponentGetValue2(effect, "mSerializedData") ~= "" then
+                polymorph = effect
+            end
+        end
+        if polymorph ~= nil then
+            set_component_enabled(polymorph, not dead)
+        end
+        if dead then
+            --EntityAddChild(GameGetPlayerStatsEntity(0), self.id)
+
+            EntityRemoveTag(self.id, "hittable")
+
+            local protection_polymorph, protection_polymorph_entity = GetGameEffectLoadTo(self.id, "PROTECTION_POLYMORPH", true)
+            ComponentSetValue2(protection_polymorph, "frames", -1)
+            EntityAddTag(protection_polymorph_entity, "iota_multiplayer.protection_polymorph")
+
+            GamePlayAnimation(self.id, "intro_sleep", 0x7FFFFFFF)
+            local sprites = EntityGetComponent(self.id, "SpriteComponent") or {}
+            for i, sprite in ipairs(sprites) do
+                if polymorph ~= nil then
+                    ComponentSetValue2(sprite, "alpha", 0.25)
+                end
+                EntityRefreshSprite(self.id, sprite)
+            end
+            GamePrintImportant("$log_coop_partner_is_dead")
+
+            if self.controls ~= nil then
+                local controls_component = self.controls._id
+                for k in pairs(ComponentGetMembers(controls_component) or {}) do
+                    if k:find("mButtonDown") and not k:find("mButtonDownDelayLine") then
+                        ComponentSetValue2(controls_component, k, false)
+                    end
+                end
+            end
+        else
+            --EntityRemoveFromParent(self.id)
+
+            EntityAddTag(self.id, "hittable")
+
+            local protection_polymorph_entity = get_children(self.id, "iota_multiplayer.protection_polymorph")[1]
+            if protection_polymorph_entity ~= nil then
+                local protection_polymorph = EntityGetFirstComponent(protection_polymorph_entity, "GameEffectComponent")
+                if protection_polymorph ~= nil then
+                    ComponentSetValue2(protection_polymorph, "frames", 0)
+                end
+            end
+
+            GamePlayAnimation(self.id, "intro_stand_up", 0x7FFFFFFF)
+            local sprites = EntityGetComponent(self.id, "SpriteComponent") or {}
+            for i, sprite in ipairs(sprites) do
+                if polymorph ~= nil then
+                    ComponentSetValue2(sprite, "alpha", 1)
+                end
+            end
+            GamePrintImportant(GameTextGet("$log_coop_resurrected_player", self.index))
+
+            if self.damage_model ~= nil then
+                self.damage_model.hp = 0.04
+                self.damage_model.is_on_fire = false
+            end
+        end
+        self.dead = dead
+    end),
 }
 function Player(player)
     return validate(player) and setmetatable({ id = player }, player_class) or {}
 end
 
-function add_player(player)
-    EntityAddTag(player, "iota_multiplayer.player")
-    local player_data = Player(player)
-    player_data.index = #get_players_including_disabled()
-    EntityAddComponent2(player, "LuaComponent", {
-        script_kick = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
-        script_damage_about_to_be_received = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
-        script_shot = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
-        script_damage_received = "mods/iota_multiplayer/files/scripts/magic/player_damage.lua",
-        script_polymorphing_to = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua",
-    })
-    EntityAddComponent2(player, "LuaComponent", {
-        _tags = "iota_multiplayer.autoaim",
-        _enabled = false,
-        script_shot = "mods/iota_multiplayer/files/scripts/perks/autoaim_shot.lua",
-    })
-end
-
 function load_player(x, y)
     local player = EntityLoad("data/entities/player.xml", x, y)
-    add_player(player)
     local player_data = Player(player)
+    player_data:add()
     player_data.load_frame = GameGetFrameNum()
     return player
 end
@@ -123,78 +195,6 @@ function get_player_at_index(index)
         return player_data.index == index and not player_data.dead
     end)
     return player
-end
-
-function set_dead(player, dead)
-    local player_data = Player(player)
-    if player_data.damage_model ~= nil then
-        set_component_enabled(player_data.damage_model._id, not dead)
-    end
-    if player_data.genome ~= nil then
-        set_component_enabled(player_data.genome._id, not dead)
-    end
-    local polymorph
-    local children = get_children(player)
-    for i, child in ipairs(children) do
-        local effect = EntityGetFirstComponentIncludingDisabled(child, "GameEffectComponent")
-        if effect ~= nil and ComponentGetValue2(effect, "mSerializedData") ~= "" then
-            polymorph = effect
-        end
-    end
-    if polymorph ~= nil then
-        set_component_enabled(polymorph, not dead)
-    end
-    if dead then
-        EntityRemoveTag(player, "hittable")
-
-        local protection_polymorph, protection_polymorph_entity = GetGameEffectLoadTo(player, "PROTECTION_POLYMORPH", true)
-        ComponentSetValue2(protection_polymorph, "frames", -1)
-        EntityAddTag(protection_polymorph_entity, "iota_multiplayer.protection_polymorph")
-
-        GamePlayAnimation(player, "intro_sleep", 0x7FFFFFFF)
-        local sprites = EntityGetComponent(player, "SpriteComponent") or {}
-        for i, sprite in ipairs(sprites) do
-            if polymorph ~= nil then
-                ComponentSetValue2(sprite, "alpha", 0.25)
-            end
-            EntityRefreshSprite(player, sprite)
-        end
-        GamePrintImportant("$log_coop_partner_is_dead")
-
-        if player_data.controls ~= nil then
-            local controls_component = player_data.controls._id
-            for k in pairs(ComponentGetMembers(controls_component) or {}) do
-                if k:find("mButtonDown") and not k:find("mButtonDownDelayLine") then
-                    ComponentSetValue2(controls_component, k, false)
-                end
-            end
-        end
-    else
-        EntityAddTag(player, "hittable")
-
-        local protection_polymorph_entity = get_children(player, "iota_multiplayer.protection_polymorph")[1]
-        if protection_polymorph_entity ~= nil then
-            local protection_polymorph = EntityGetFirstComponent(protection_polymorph_entity, "GameEffectComponent")
-            if protection_polymorph ~= nil then
-                ComponentSetValue2(protection_polymorph, "frames", 0)
-            end
-        end
-
-        GamePlayAnimation(player, "intro_stand_up", 0x7FFFFFFF)
-        local sprites = EntityGetComponent(player, "SpriteComponent") or {}
-        for i, sprite in ipairs(sprites) do
-            if polymorph ~= nil then
-                ComponentSetValue2(sprite, "alpha", 1)
-            end
-        end
-        GamePrintImportant(GameTextGet("$log_coop_resurrected_player", player_data.index))
-
-        if player_data.damage_model ~= nil then
-            player_data.damage_model.hp = 0.04
-            player_data.damage_model.is_on_fire = false
-        end
-    end
-    player_data.dead = dead
 end
 
 function perk_spawn_with_data(x, y, perk_data, script_item_picked_up)

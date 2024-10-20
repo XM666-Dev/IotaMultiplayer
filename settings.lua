@@ -158,9 +158,13 @@ iota_multiplayer.setting_friendly_fire_force,Force,,,,,,,,强制,,,
 iota_multiplayer.settingdesc_friendly_fire_force,Do players force friendly fire?,,,,,,,,玩家之间是否强制友伤？,,,
 iota_multiplayer.setting_camera,Camera,,,,,,,,摄像机,,,
 iota_multiplayer.settingdesc_camera,About camera tweaks,,,,,,,,摄像机调整相关,,,
-iota_multiplayer.setting_camera_zoom,Zoom,,,,,,,,缩放,,,
-iota_multiplayer.settingdesc_camera_zoom,Camera zoom multiplier.,,,,,,,,摄像机的缩放倍数。,,,
-iota_multiplayer.respawn,Press $0 to resurrect,,,,,,,,按 $0 复活,,,
+iota_multiplayer.setting_camera_zoom_min,Min zoom,,,,,,,,最小缩放,,,
+iota_multiplayer.settingdesc_camera_zoom_min,Camera minimum zoom multiplier.,,,,,,,,摄像机的最小缩放倍数。,,,
+iota_multiplayer.setting_camera_zoom_max,Max zoom,,,,,,,,最大缩放,,,
+iota_multiplayer.settingdesc_camera_zoom_max,Camera maximum zoom multiplier.,,,,,,,,摄像机的最大缩放倍数。,,,
+iota_multiplayer.itempickup_use,Press $0 to use '$1',,,,,,,,按 $0 使用“$1”,,,
+iota_multiplayer.item_resurrect,Resurrect,,,,,,,,复活,,,
+iota_multiplayer.item_corpse,Corpse,,,,,,,,尸体,,,
 ]])
 local function get_language()
     return ({
@@ -273,16 +277,31 @@ mod_settings = {
         category_id = "camera",
         settings = {
             Table({
-                id = "camera_zoom",
+                id = "camera_zoom_min",
+                value_default = 1,
+                value_min = 1,
+                value_display_multiplier = 100,
+                value_display_formatting = " $0 %",
+                scope = MOD_SETTING_SCOPE_RUNTIME,
+            }, {
+                ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom_min") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom_min") end,
+                value_max = function() return ModSettingGetNextValue("iota_multiplayer.camera_zoom_max") end,
+            }),
+            Table({
+                id = "camera_zoom_max",
                 value_default = 1,
                 value_min = 1,
                 value_max = 2,
                 value_display_multiplier = 100,
                 value_display_formatting = " $0 %",
                 scope = nil,
+                change_fn = function(mod_id, gui, in_main_menu, setting, old_value, new_value)
+                    ModSettingSetNextValue("iota_multiplayer.camera_zoom_min", math.min(ModSettingGetNextValue("iota_multiplayer.camera_zoom_min"), new_value), false)
+                end,
             }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom") end,
+                ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom_max") end,
+                ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom_max") end,
             }),
             Table({
                 id = "camera_unique",

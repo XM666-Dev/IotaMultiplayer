@@ -43,16 +43,14 @@ local function add_magic_numbers(t)
     ModMagicNumbersFileAdd("mods/iota_multiplayer/files/magic_numbers.xml")
 end
 local magic_numbers = get_magic_numbers()
+local mod_magic_numbers = { UI_COOP_QUICK_INVENTORY_HEIGHT = 0, UI_COOP_STAT_BARS_HEIGHT = 0 }
 
 if GameGetWorldStateEntity() == 0 then
-    ModSettingSet("iota_multiplayer.camera_zoom", ModSettingGetNextValue("iota_multiplayer.camera_zoom") or 1)
+    ModSettingSet("iota_multiplayer.camera_zoom_max", ModSettingGetNextValue("iota_multiplayer.camera_zoom_max"))
 end
-local zoom = ModSettingGet("iota_multiplayer.camera_zoom")
-if zoom ~= 1 then
-    add_magic_numbers({
-        VIRTUAL_RESOLUTION_X = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X) * zoom,
-        VIRTUAL_RESOLUTION_Y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y) * zoom,
-    })
+if ModSettingGet("iota_multiplayer.camera_zoom_max") ~= 1 then
+    mod_magic_numbers.VIRTUAL_RESOLUTION_X = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X) * ModSettingGet("iota_multiplayer.camera_zoom_max")
+    mod_magic_numbers.VIRTUAL_RESOLUTION_Y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y) * ModSettingGet("iota_multiplayer.camera_zoom_max")
     local flag = true
     local function apply_zoom(s)
         return ("(%s) * internal_zoom.xy - internal_zoom.xy * 0.5 + 0.5"):format(s)
@@ -63,7 +61,7 @@ if zoom ~= 1 then
                 flag = false
                 return
             end
-            return string.format("%f", zoom)
+            return string.format("%f", ModSettingGet("iota_multiplayer.camera_zoom_max"))
         end, 2)
         :gsub("\n", "\nuniform vec4 internal_zoom;", 1)
         :gsub(("gl_TexCoord[0].xy"):raw(), apply_zoom)
@@ -78,7 +76,7 @@ local function get_camera_info()
     local positions = {}
     local camera_center_player = get_player_at_index(mod.camera_center_index)
     local center_x, center_y = EntityGetTransform(camera_center_player)
-    local min_resolution_x, min_resolution_y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X), tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y)
+    local min_resolution_x, min_resolution_y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X) * ModSettingGet("iota_multiplayer.camera_zoom_min"), tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y) * ModSettingGet("iota_multiplayer.camera_zoom_min")
     local max_resolution_x, max_resolution_y = tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_X")), tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_Y"))
     local safe_w = max_resolution_x - min_resolution_x * 0.5
     local safe_h = max_resolution_y - min_resolution_y * 0.5
@@ -86,7 +84,7 @@ local function get_camera_info()
         local x, y
         local player_data = Player(player)
         if player_data.shooter ~= nil then
-            x, y = unpack(player_data.shooter.mDesiredCameraPos)
+            x, y = player_data.shooter.mDesiredCameraPos()
         else
             x, y = EntityGetTransform(player)
         end
@@ -111,12 +109,23 @@ local function get_camera_info()
     local internal_zoom = math.max(resolution_x / max_resolution_x, resolution_y / max_resolution_y)
     return camera_x, camera_y, internal_zoom
 end
-local f = GameGetCameraBounds
+
+local raw_game_get_camera_bounds = GameGetCameraBounds
 function GameGetCameraBounds()
-    local x, y, w, h = f()
+    local x, y, w, h = raw_game_get_camera_bounds()
     local camera_x, camera_y, internal_zoom = get_camera_info()
-    return x, y, w * internal_zoom, h * internal_zoom
+    local ratio = 0.5 - internal_zoom / 2
+    return x + w * ratio, y + h * ratio, w * internal_zoom, h * internal_zoom
 end
+
+local raw_get_resolution = get_resolution
+function get_resolution(gui)
+    local width, height = raw_get_resolution(gui)
+    local camera_x, camera_y, internal_zoom = get_camera_info()
+    return width * internal_zoom, height * internal_zoom
+end
+
+add_magic_numbers(mod_magic_numbers)
 
 function OnWorldInitialized()
     for i, pos in ipairs(mod.player_positions) do
@@ -129,12 +138,12 @@ function OnPlayerSpawned(player)
     if has_flag_run_or_add("iota_multiplayer.player_spawned_once") then
         return
     end
-    add_player(player)
+    local player_data = Player(player)
+    player_data:add()
+    EntityAddComponent2(mod.id, "LuaComponent", { script_source_file = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua" })
     EntityAddComponent2(mod.id, "ElectricityReceiverComponent", { electrified_msg_interval_frames = 1 })
-    EntityAddComponent2(mod.id, "LuaComponent", {
-        script_electricity_receiver_electrified = "mods/iota_multiplayer/files/scripts/magic/camera_update.lua",
-        script_source_file = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua",
-    })
+    EntityAddComponent2(mod.id, "LuaComponent", { script_electricity_receiver_electrified = "mods/iota_multiplayer/files/scripts/magic/camera_update_pre.lua" })
+    EntityAddComponent2(mod.id, "LuaComponent", { script_source_file = "mods/iota_multiplayer/files/scripts/magic/camera_update_post.lua" })
 end
 
 local function is_pressed(a, b, emulated)
@@ -217,16 +226,16 @@ local function update_controls()
             player_data.controls.mButtonFrameFly = get_frame_num_next()
         end
 
-        player_data.controls.mButtonDownChangeItemR = player_data:mnin_bind("itemnext", true)
-        if player_data:mnin_bind("itemnext", true, true) then
+        player_data.controls.mButtonDownChangeItemR = player_data:mnin_bind("itemnext", true) and ModTextFileGetContent("mods/spell_lab_shugged/scroll_box_hovered.txt") ~= "true"
+        if player_data:mnin_bind("itemnext", true, true) and player_data.controls.mButtonDownChangeItemR then
             player_data.controls.mButtonFrameChangeItemR = get_frame_num_next()
             player_data.controls.mButtonCountChangeItemR = 1
         else
             player_data.controls.mButtonCountChangeItemR = 0
         end
 
-        player_data.controls.mButtonDownChangeItemL = player_data:mnin_bind("itemprev", true)
-        if player_data:mnin_bind("itemprev", true, true) then
+        player_data.controls.mButtonDownChangeItemL = player_data:mnin_bind("itemprev", true) and ModTextFileGetContent("mods/spell_lab_shugged/scroll_box_hovered.txt") ~= "true"
+        if player_data:mnin_bind("itemprev", true, true) and player_data.controls.mButtonDownChangeItemL then
             player_data.controls.mButtonFrameChangeItemL = get_frame_num_next()
             player_data.controls.mButtonCountChangeItemL = 1
         else
@@ -264,14 +273,14 @@ local function update_controls()
         local aim, aim_unbound, aim_emulated = player_data:mnin_stick("aim")
         local CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS = tonumber(MagicNumbersGetValue("CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS"))
         if aim_unbound then
-            local mouse_position_x, mouse_position_y = DEBUG_GetMouseWorld()
+            local mouse_position_raw_x, mouse_position_raw_y = InputGetMousePosOnScreen()
+            local mouse_position_x, mouse_position_y = get_pos_in_world(mouse_position_raw_x, mouse_position_raw_y)
             local center_x, center_y = EntityGetFirstHitboxCenter(player)
             local aiming_vector_x, aiming_vector_y = mouse_position_x - center_x, mouse_position_y - center_y
             local magnitude = math.max(math.sqrt(aiming_vector_x * aiming_vector_x + aiming_vector_y * aiming_vector_y), CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS)
             local aiming_vector_normalized_x, aiming_vector_normalized_y = aiming_vector_x / magnitude, aiming_vector_y / magnitude
             player_data.controls.mAimingVector = { aiming_vector_x, aiming_vector_y }
             player_data.controls.mAimingVectorNormalized = { aiming_vector_normalized_x, aiming_vector_normalized_y }
-            local mouse_position_raw_x, mouse_position_raw_y = InputGetMousePosOnScreen()
             local mouse_position_raw_prev = player_data.controls.mMousePositionRaw
             player_data.controls.mMousePosition = { mouse_position_x, mouse_position_y }
             player_data.controls.mMousePositionRaw = { mouse_position_raw_x, mouse_position_raw_y }
@@ -312,8 +321,7 @@ local function update_controls()
         player_data.controls.mAimingVectorNonZeroLatest = aiming_vector_non_zero_latest
         player_data.controls.mGamepadAimingVectorRaw = aim
         local mouse_position = player_data.controls.mGamePadCursorInWorld
-        local mouse_position_raw_x, mouse_position_raw_y = get_pos_on_screen(gui, unpack(mouse_position))
-        mouse_position_raw_x, mouse_position_raw_y = mouse_position_raw_x * 2, mouse_position_raw_y * 2
+        local mouse_position_raw_x, mouse_position_raw_y = get_pos_on_screen(mouse_position())
         local mouse_position_raw_prev = player_data.controls.mMousePositionRaw
         player_data.controls.mMousePosition = mouse_position
         player_data.controls.mMousePositionRaw = { mouse_position_raw_x, mouse_position_raw_y }
@@ -504,7 +512,7 @@ local function update_common()
         if player_data.damage_model ~= nil then
             player_data.damage_model.wait_for_kill_flag_on_death = #players > 1
             if player_data.damage_model.hp < 0 then
-                set_dead(player, true)
+                player_data:set_dead(true)
             end
         end
 
@@ -523,8 +531,8 @@ local function update_common()
             _tags = "enabled_in_inventory", play_pick_sound = false,
         })
 
-        ComponentSetValue2(item, "item_name", "$log_coop_resurrected")
-        ComponentSetValue2(item, "custom_pickup_string", "$iota_multiplayer.itempickup_respawn")
+        ComponentSetValue2(item, "item_name", "$iota_multiplayer.item_resurrect")
+        ComponentSetValue2(item, "custom_pickup_string", "$iota_multiplayer.itempickup_use")
 
         local x, y = EntityGetTransform(player)
         local coop_respawn = EntityGetInRadiusWithTag(x, y, 100, "coop_respawn")[1]
@@ -545,7 +553,7 @@ local function update_common()
                     table.insert(shared_indexs, dead_player_data.index)
                     coop_respawn_data.shared_indexs = serialize(shared_indexs)
 
-                    set_dead(dead_player, false)
+                    dead_player_data:set_dead(false)
                     local from_x, from_y = EntityGetTransform(dead_player)
                     teleport(dead_player, from_x, from_y, to_x, to_y)
                 end
@@ -581,7 +589,7 @@ local function update_common()
             local x, y = EntityGetTransform(player)
             EntitySetTransform(hint, x, y)
 
-            set_component_enabled(item, true)
+            set_component_enabled(item, not player_data:is_inventory_open() and player_data.controls.mButtonFrameInventory ~= get_frame_num_next())
         end
         local arm_r = player_data:get_arm_r()
         if arm_r ~= nil and player_data.sprite ~= nil then
@@ -647,7 +655,7 @@ local function update_camera()
             set_component_enabled(player_data.listener._id, player_data.index == mod.camera_center_index)
         end
     end
-    if zoom > 1 then
+    if ModSettingGet("iota_multiplayer.camera_zoom_max") ~= ModSettingGet("iota_multiplayer.camera_zoom_min") then
         local electricity_receiver = EntityGetFirstComponent(mod.id, "ElectricityReceiverComponent")
         if electricity_receiver ~= nil then
             ComponentSetValue2(electricity_receiver, "mLastFrameElectrified", get_frame_num_next())
@@ -661,21 +669,18 @@ local function update_camera_post()
     GameSetCameraPos(camera_x, camera_y)
     GameSetCameraFree(true)
     GameSetPostFxParameter("internal_zoom", internal_zoom, internal_zoom, internal_zoom, internal_zoom)
-    if zoom > 1 then
-        local entities = EntityGetInRadius(0, 0, math.huge)
-        for i, entity in ipairs(entities) do
-            local sprites = EntityGetComponent(entity, "SpriteComponent") or {}
-            for i, sprite in ipairs(sprites) do
-                if ComponentGetValue2(sprite, "emissive") then
-                    ComponentSetValue2(sprite, "emissive", false)
-                    ComponentSetValue2(sprite, "z_index", -math.huge)
-                    EntityRefreshSprite(entity, sprite)
-                end
-            end
-        end
-    end
 end
 
+local colors_bar_bg = ModImageMakeEditable("data/ui_gfx/hud/colors_bar_bg.png", nil, nil)
+local border_color = ModImageGetPixel(colors_bar_bg, 1, 0)
+local fill_color = ModImageGetPixel(colors_bar_bg, 1, 1)
+local bar_bg = ModImageMakeEditable("mods/iota_multiplayer/files/ui_gfx/hud/bar_bg.png", 3, 3)
+for i = 0, 2 do
+    for j = 0, 2 do
+        ModImageSetPixel(bar_bg, j, i, border_color)
+    end
+end
+ModImageSetPixel(bar_bg, 1, 1, fill_color)
 local function update_gui_mod()
     if #get_players_including_disabled() < 2 then return end
     GuiStartFrame(gui)
@@ -688,9 +693,9 @@ local function update_gui_mod()
     for i, player in ipairs(players) do
         local player_data = Player(player)
         local player_x, player_y = EntityGetTransform(player)
-        local x, y = get_pos_on_screen(gui, player_x, player_y)
-        local offset_x = 5
-        local offset_y = 5
+        local x, y = get_pos_on_screen(player_x, player_y, gui)
+        local offset_x = 6
+        local offset_y = 6
 
         local y = y + offset_y
         table.insert(widgets, function()
@@ -699,25 +704,23 @@ local function update_gui_mod()
         end)
 
         local x = x + offset_x
-        local y = y + 2
-        local to_x = x + 6
-        local to_y = y + 6
+        local y = y + 3
+        local width = 4
+        local height = 4
         table.insert(widgets, function()
-            GuiImage(gui, new_id("bar_bg" .. i), x, y, "data/ui_gfx/hud/colors_bar_bg.png", 1, (to_x - x) / 2, (to_y - y) / 2)
+            GuiImageNinePiece(gui, new_id("bar_bg" .. i), x, y, width, height, 1, "mods/iota_multiplayer/files/ui_gfx/hud/bar_bg.png")
         end)
 
-        local x, y = x + 1, y + 1
-        local to_x, to_y = to_x - 1, to_y - 1
         if player_data.damage_model ~= nil then
-            local to_x = lerp_clamped(x, to_x, player_data.damage_model.hp / player_data.damage_model.max_hp)
+            local ratio = player_data.damage_model.hp / player_data.damage_model.max_hp
             table.insert(widgets, function()
-                GuiImage(gui, new_id("health_bar" .. i), x, y, "data/ui_gfx/hud/colors_health_bar.png", 1, (to_x - x) / 2, (to_y - y) / 2)
+                GuiImage(gui, new_id("health_bar" .. i), x, y, "data/ui_gfx/hud/colors_health_bar.png", 1, width / 2 * ratio, height / 2)
             end)
         end
         if player_data.character_data ~= nil and player_data.character_data.mFlyingTimeLeft < player_data.character_data.fly_time_max then
-            local y = lerp_clamped(y, to_y, player_data.character_data.mFlyingTimeLeft / player_data.character_data.fly_time_max)
+            local ratio = player_data.character_data.mFlyingTimeLeft / player_data.character_data.fly_time_max
             table.insert(widgets, function()
-                GuiImage(gui, new_id("flying_bar" .. i), x, y, "data/ui_gfx/hud/colors_flying_bar.png", 1, (to_x - x) / 2, (to_y - y) / 2)
+                GuiImage(gui, new_id("flying_bar" .. i), x, y + height * ratio, "data/ui_gfx/hud/colors_flying_bar.png", 1, width / 2, height / 2 * (1 - ratio))
             end)
         end
     end

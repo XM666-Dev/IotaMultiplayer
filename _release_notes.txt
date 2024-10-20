@@ -1,7 +1,16 @@
-﻿alpha-0.9.3-20241007
+﻿alpha-0.9.4-20241020
+-improve coop gui
+-improve camera zoom
+-fix wheel switching (not completed yet)
+-fix aiming
+-improve text
+-fix bar gui
+-fix heal amount
+
+alpha-0.9.3-20241007
 -add camera unique
 -improve compatibility
--add corpse sharing (not completed now)
+-add corpse sharing (not completed yet)
 -fix hint
 -fix sth
 

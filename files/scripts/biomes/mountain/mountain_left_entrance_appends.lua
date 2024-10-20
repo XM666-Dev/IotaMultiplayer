@@ -1,9 +1,9 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/sule.lua")(function()
     dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
-    local old_init = init
+    local raw_init = init
     function _G.init(x, y, w, h)
-        old_init(x, y, w, h)
+        raw_init(x, y, w, h)
         perk_spawn_with_data(x + 345, y + 400, {
             ui_name = "$log_coop_started",
             ui_description = "$log_coop_started",

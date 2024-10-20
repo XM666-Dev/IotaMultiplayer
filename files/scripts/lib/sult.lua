@@ -44,22 +44,42 @@ function get_frame_num_next()
     return GameGetFrameNum() + 1
 end
 
-function get_camera_corner()
+local raw_gui
+
+function get_resolution(gui)
+    if gui == nil then
+        gui = raw_gui or GuiCreate()
+        raw_gui = gui
+    end
+    local virtual_resolution_x = tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_X"))
+    local screen_width, screen_height = GuiGetScreenDimensions(gui)
+    return virtual_resolution_x, virtual_resolution_x * screen_height / screen_width
+end
+
+function get_pos_on_screen(x, y, gui)
+    if gui == nil then
+        gui = raw_gui or GuiCreate()
+        raw_gui = gui
+    end
     local camera_x, camera_y = GameGetCameraPos()
-    local x, y, w, h = GameGetCameraBounds()
-    return camera_x - w / 2, camera_y - h / 2
+    local bounds_x, bounds_y, bounds_width, bounds_height = GameGetCameraBounds()
+    local resolution_width, resolution_height = get_resolution(gui)
+    local screen_width, screen_height = GuiGetScreenDimensions(gui)
+    return (x - camera_x + bounds_width / 2 + tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_X"))) / resolution_width * screen_width,
+        (y - camera_y + bounds_height / 2 + tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_Y"))) / resolution_height * screen_height
 end
 
-function get_camera_zoom(gui)
-    local camera_x, camera_y, camera_w, camera_h = GameGetCameraBounds()
-    local screen_w, screen_h = GuiGetScreenDimensions(gui)
-    return screen_w / camera_w, screen_h / camera_h
-end
-
-function get_pos_on_screen(gui, x, y)
-    local camera_x, camera_y = get_camera_corner()
-    local zoom_x, zoom_y = get_camera_zoom(gui)
-    return (x - camera_x) * zoom_x, (y - camera_y) * zoom_y
+function get_pos_in_world(x, y, gui)
+    if gui == nil then
+        gui = raw_gui or GuiCreate()
+        raw_gui = gui
+    end
+    local screen_width, screen_height = GuiGetScreenDimensions(gui)
+    local resolution_width, resolution_height = get_resolution(gui)
+    local camera_x, camera_y = GameGetCameraPos()
+    local bounds_x, bounds_y, bounds_width, bounds_height = GameGetCameraBounds()
+    return x / screen_width * resolution_width + camera_x - bounds_width / 2 - tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_X")),
+        y / screen_height * resolution_height + camera_y - bounds_height / 2 - tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_Y"))
 end
 
 function get_attack_index(attacks)
@@ -151,20 +171,21 @@ function new_id(s)
     return id
 end
 
-function serialize(value)
-    local value_type = type(value)
-    if value_type == "number" then
-        return ("%.16a"):format(value)
-    elseif value_type == "string" then
-        return ("%q"):format(value)
-    elseif value_type == "table" then
-        local t = {}
-        for k, v in pairs(value) do
+function serialize(v)
+    local type = type(v)
+    if type == "number" then
+        return ("%.16a"):format(v)
+    elseif type == "string" then
+        return ("%q"):format(v)
+    elseif type == "table" then
+        local t = { "{" }
+        for k, v in pairs(v) do
             table.insert(t, ("[%s]=%s,"):format(serialize(k), serialize(v)))
         end
-        return ("{%s}"):format(table.concat(t))
+        table.insert(t, "}")
+        return table.concat(t)
     end
-    return tostring(value)
+    return tostring(v)
 end
 
 function deserialize(s)
@@ -369,20 +390,26 @@ function EntityAccessor(tag, pred)
     }
 end
 
+local pack_metatable = {
+    __call = function(t)
+        return unpack(t)
+    end,
+}
 local component_metatable = {
     __index = function(t, k)
         local v = { ComponentGetValue2(t._id, k) }
         if #v > 1 then
-            return v
+            return setmetatable(v, pack_metatable)
+        else
+            return v[1]
         end
-        return v[1]
     end,
     __newindex = function(t, k, v)
         if type(v) == "table" then
             ComponentSetValue2(t._id, k, unpack(v))
-            return
+        else
+            ComponentSetValue2(t._id, k, v)
         end
-        ComponentSetValue2(t._id, k, v)
     end,
 }
 function ComponentAccessor(f, ...)

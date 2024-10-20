@@ -22,7 +22,11 @@ end
 function damage_about_to_be_received(damage, x, y, entity_thats_responsible, critical_hit_chance)
     local this = GetUpdatedEntityID()
     if validate(entity_thats_responsible) and entity_thats_responsible ~= this and EntityHasTag(entity_thats_responsible, "iota_multiplayer.player") then
-        damage = not ModSettingGet("iota_multiplayer.friendly_fire_kick") and add_blocker(entity_thats_responsible, this) and 0 or damage * ModSettingGet("iota_multiplayer.friendly_fire_percent")
+        if not ModSettingGet("iota_multiplayer.friendly_fire_kick") and add_blocker(entity_thats_responsible, this) then
+            damage = 0
+        elseif damage > 0 then
+            damage = damage * ModSettingGet("iota_multiplayer.friendly_fire_percent")
+        end
     end
     return damage, critical_hit_chance
 end
