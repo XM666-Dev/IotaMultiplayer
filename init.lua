@@ -11,6 +11,11 @@ ModLuaFileAppend("data/scripts/items/spell_refresh.lua", "mods/iota_multiplayer/
 local filenames = ModLuaFileGetAppends("data/scripts/perks/perk.lua")
 table.insert(filenames, 1, "mods/iota_multiplayer/files/scripts/perks/perk_appends.lua")
 ModLuaFileSetAppends("data/scripts/perks/perk.lua", filenames)
+ModTextFileSetContent("mods/iota_multiplayer/files/scripts/get_player_appends.lua", [[
+dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
+function get_player() return get_player_at_index(mod.camera_center_index) end
+]])
+ModLuaFileAppend("mods/spell_lab_shugged/files/gui/get_player.lua", "mods/iota_multiplayer/files/scripts/get_player_appends.lua")
 
 append_translations("mods/iota_multiplayer/files/translations.csv")
 
@@ -51,24 +56,11 @@ end
 if ModSettingGet("iota_multiplayer.camera_zoom_max") ~= 1 then
     mod_magic_numbers.VIRTUAL_RESOLUTION_X = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X) * ModSettingGet("iota_multiplayer.camera_zoom_max")
     mod_magic_numbers.VIRTUAL_RESOLUTION_Y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y) * ModSettingGet("iota_multiplayer.camera_zoom_max")
-    local flag = true
-    local function apply_zoom(s)
-        return ("(%s) * internal_zoom.xy - internal_zoom.xy * 0.5 + 0.5"):format(s)
-    end
     ModTextFileSetContent("data/shaders/post_final.vert", ModTextFileGetContent("data/shaders/post_final.vert")
-        :gsub("camera_inv_zoom_ratio", function()
-            if flag then
-                flag = false
-                return
-            end
-            return string.format("%f", ModSettingGet("iota_multiplayer.camera_zoom_max"))
-        end, 2)
+        :gsub(("90.0 * camera_inv_zoom_ratio"):raw(), ("90.0 * camera_inv_zoom_ratio * %f"):format(ModSettingGet("iota_multiplayer.camera_zoom_max")))
         :gsub("\n", "\nuniform vec4 internal_zoom;", 1)
-        :gsub(("gl_TexCoord[0].xy"):raw(), apply_zoom)
-        :gsub(("gl_TexCoord[0].zw + vec2(camera_subpixel_offset.x, camera_subpixel_offset.y)"):raw(), apply_zoom)
-        :gsub(("gl_TexCoord[1].xy"):raw(), apply_zoom)
-    --:gsub("gl_MultiTexCoord0", "(gl_MultiTexCoord0 * internal_zoom - internal_zoom * 0.5 + 0.5)")
-    --:gsub("gl_MultiTexCoord1", "(gl_MultiTexCoord1 * internal_zoom - internal_zoom * 0.5 + 0.5)")
+        :gsub("gl_MultiTexCoord0", "gl_MultiTexCoord0 * internal_zoom - internal_zoom * 0.5 + 0.5")
+        :gsub("gl_MultiTexCoord1", "gl_MultiTexCoord1 * internal_zoom - internal_zoom * 0.5 + 0.5")
     )
 end
 local function get_camera_info()
@@ -135,6 +127,7 @@ end
 
 function OnPlayerSpawned(player)
     player_spawned = true
+    debug_print("player_spawned_once", GameHasFlagRun("iota_multiplayer.player_spawned_once"))
     if has_flag_run_or_add("iota_multiplayer.player_spawned_once") then
         return
     end
@@ -146,6 +139,24 @@ function OnPlayerSpawned(player)
     EntityAddComponent2(mod.id, "LuaComponent", { script_source_file = "mods/iota_multiplayer/files/scripts/magic/camera_update_post.lua" })
 end
 
+local function mnin_stick_raw(mod_id, bind_id, pressed_mode, is_vip, inmode)
+    local abort_tbl = { { 0, 0 }, false, { false, false }, 0 }
+    if (GameHasFlagRun(mnee.SERV_MODE) and not (mnee.ignore_service_mode)) then return unpack(abort_tbl) end
+    if (GameHasFlagRun(mnee.TOGGLER) and not (is_vip)) then return unpack(abort_tbl) end
+    if (not (mnee.is_priority_mod(mod_id))) then return unpack(abort_tbl) end
+
+    local binding = mnee.get_bindings()
+    if (binding ~= nil) then binding = binding[mod_id] end
+    if (binding ~= nil) then binding = binding[bind_id] end
+    if (not (pen.vld(binding))) then return unpack(abort_tbl) end
+
+    local acc = 100
+    local val_x, gone_x, buttoned_x = mnee.mnin_axis(mod_id, binding.axes[1], true, pressed_mode, is_vip, inmode)
+    local val_y, gone_y, buttoned_y = mnee.mnin_axis(mod_id, binding.axes[2], true, pressed_mode, is_vip, inmode)
+    local direction = math.rad(math.floor(math.deg(math.atan2(val_y, val_x)) + 0.5))
+    val_x, val_y = pen.rounder(mnee.apply_deadzone(math.min(val_x, 1), binding.jpad_type, binding.deadzone), acc), pen.rounder(mnee.apply_deadzone(math.min(val_y, 1), binding.jpad_type, binding.deadzone), acc)
+    return { math.min(val_x, 1), math.min(val_y, 1) }, gone_x or gone_y, { buttoned_x, buttoned_y }, direction
+end
 local function is_pressed(a, b, emulated)
     return (a ~= b or not emulated) and b ~= 0
 end
@@ -288,29 +299,12 @@ local function update_controls()
             player_data.controls.mMouseDelta = { mouse_position_raw_x - mouse_position_raw_prev[1], mouse_position_raw_y - mouse_position_raw_prev[2] }
             goto continue
         end
+        local aim_raw = mnin_stick_raw("iota_multiplayer" .. player_data.index, "aim")
         if player_data:is_inventory_open() then
             aim = { 0, 0 }
+            aim_raw = { 0, 0 }
         end
         local aiming_vector_non_zero_latest = player_data.controls.mAimingVectorNonZeroLatest
-        local function mnin_stick_raw(mod_id, bind_id, pressed_mode, is_vip, inmode)
-            local abort_tbl = { { 0, 0 }, false, { false, false }, 0 }
-            if (GameHasFlagRun(mnee.SERV_MODE) and not (mnee.ignore_service_mode)) then return unpack(abort_tbl) end
-            if (GameHasFlagRun(mnee.TOGGLER) and not (is_vip)) then return unpack(abort_tbl) end
-            if (not (mnee.is_priority_mod(mod_id))) then return unpack(abort_tbl) end
-
-            local binding = mnee.get_bindings()
-            if (binding ~= nil) then binding = binding[mod_id] end
-            if (binding ~= nil) then binding = binding[bind_id] end
-            if (not (pen.vld(binding))) then return unpack(abort_tbl) end
-
-            local acc = 100
-            local val_x, gone_x, buttoned_x = mnee.mnin_axis(mod_id, binding.axes[1], true, pressed_mode, is_vip, inmode)
-            local val_y, gone_y, buttoned_y = mnee.mnin_axis(mod_id, binding.axes[2], true, pressed_mode, is_vip, inmode)
-            local direction = math.rad(math.floor(math.deg(math.atan2(val_y, val_x)) + 0.5))
-            val_x, val_y = pen.rounder(mnee.apply_deadzone(math.min(val_x, 1), binding.jpad_type, binding.deadzone), acc), pen.rounder(mnee.apply_deadzone(math.min(val_y, 1), binding.jpad_type, binding.deadzone), acc)
-            return { math.min(val_x, 1), math.min(val_y, 1) }, gone_x or gone_y, { buttoned_x, buttoned_y }, direction
-        end
-        local aim_raw = mnin_stick_raw("iota_multiplayer" .. player_data.index, "aim")
         if is_pressed(tonumber(player_data.previous_aim_x), aim_raw[1], aim_emulated[1]) or is_pressed(tonumber(player_data.previous_aim_y), aim_raw[2], aim_emulated[2]) then
             aiming_vector_non_zero_latest = aim
         end
@@ -368,6 +362,7 @@ local function update_gui()
             next_gui_enabled_player = player
         end
     end
+
     if next_gui_enabled_player ~= nil and next_gui_enabled_player ~= gui_enabled_player then
         next_gui_enabled_player_data = Player(next_gui_enabled_player)
         if next_gui_enabled_player_data.gui ~= nil and gui_enabled_player_data.gui ~= nil then
@@ -379,66 +374,31 @@ local function update_gui()
         end
         mod.gui_enabled_index = next_gui_enabled_player_data.index
     end
+
+    if not gui_initialized then
+        gui_initialized = true
+        for i, player in ipairs(players_including_disabled) do
+            local player_data = Player(player)
+            if player_data.gui ~= nil then
+                remove_component(player_data.gui._id)
+                EntityAddComponent2(player, "InventoryGuiComponent")
+            end
+        end
+    end
+
+    local gui_enabled_player = get_player_at_index_including_disabled(mod.gui_enabled_index)
+    local i, player = table.find(players_including_disabled, function(v) return Player(v).controls.mButtonFrameInteract == get_frame_num_next() end)
+    if player ~= nil and player ~= gui_enabled_player then
+        local player_data = Player(player)
+        player_data.gui.mAlpha = -0.2
+        gui_enabled_player = player
+    end
     for i, player in ipairs(players_including_disabled) do
         local player_data = Player(player)
         if player_data.gui ~= nil then
-            set_component_enabled(player_data.gui._id, player_data.index == mod.gui_enabled_index)
+            set_component_enabled(player_data.gui._id, player == gui_enabled_player)
         end
     end
-    --local players = get_players()
-    --for i, player in ipairs(players) do
-    --    local player_data = Player(player)
-    --    if player_data.index == 1 then
-    --        for i = 0, 7 do
-    --            if InputIsKeyDown(30 + i) then
-    --                local item, index = get_item(player, i)
-    --                if item ~= nil then
-    --                    --player_data.inventory.mActiveItem = item
-    --                    --player_data.inventory.mActualActiveItem = item
-    --                    player_data.inventory.mSavedActiveItemIndex = index - 1
-    --                    player_data.inventory.mInitialized = false
-    --                    --player_data.inventory.mForceRefresh = true
-    --                end
-    --            end
-    --        end
-    --    end
-    --end
-end
-
-local function update_gui_post()
-    local players = get_players_including_disabled()
-    for i, player in ipairs(players) do
-        local player_data = Player(player)
-        if player_data.gui ~= nil then
-            set_component_enabled(player_data.gui._id, true)
-        end
-    end
-    --local players = get_players()
-    --for i, player in ipairs(players) do
-    --    local player_data = Player(player)
-    --    if player_data.index == 1 then
-    --        if InputIsKeyJustDown(30) then
-    --            local item, index = get_item(player, 0)
-    --            if item ~= nil then
-    --                player_data.inventory.mActiveItem = item
-    --                player_data.inventory.mActualActiveItem = item
-    --                player_data.inventory.mSavedActiveItemIndex = index - 1
-    --                player_data.inventory.mInitialized = false
-    --                --debug_print("update_gui_post", player_data.inventory.mSavedActiveItemIndex)
-    --            end
-    --        end
-    --        if InputIsKeyJustDown(31) then
-    --            local item, index = get_item(player, 1)
-    --            if item ~= nil then
-    --                player_data.inventory.mActiveItem = item
-    --                player_data.inventory.mActualActiveItem = item
-    --                player_data.inventory.mSavedActiveItemIndex = index - 1
-    --                player_data.inventory.mInitialized = false
-    --                --debug_print("update_gui_post", player_data.inventory.mSavedActiveItemIndex)
-    --            end
-    --        end
-    --    end
-    --end
 end
 
 local function add_script_throw(item)
@@ -589,7 +549,8 @@ local function update_common()
             local x, y = EntityGetTransform(player)
             EntitySetTransform(hint, x, y)
 
-            set_component_enabled(item, not player_data:is_inventory_open() and player_data.controls.mButtonFrameInventory ~= get_frame_num_next())
+            set_component_enabled(item, player_data.controls.mButtonFrameInventory == get_frame_num_next() == player_data:is_inventory_open() or InputIsKeyJustDown(Key_ESCAPE)) --need corpse sharing being completed
+            --player_data.controls.mButtonFrameInventory == get_frame_num_next() ~= player_data:is_inventory_open() and not InputIsKeyJustDown(Key_ESCAPE)
         end
         local arm_r = player_data:get_arm_r()
         if arm_r ~= nil and player_data.sprite ~= nil then
@@ -599,7 +560,7 @@ local function update_common()
         end
         if player_data.aiming_reticle ~= nil then
             local aim, aim_unbound, aim_emulated = player_data:mnin_stick("aim")
-            player_data.aiming_reticle.visible = not aim_unbound and not player_data.dead
+            player_data.aiming_reticle.visible = not aim_unbound and not player_data:is_inventory_open() and not player_data.dead
         end
     end
 
@@ -693,17 +654,19 @@ local function update_gui_mod()
     for i, player in ipairs(players) do
         local player_data = Player(player)
         local player_x, player_y = EntityGetTransform(player)
-        local x, y = get_pos_on_screen(player_x, player_y, gui)
-        local offset_x = 6
-        local offset_y = 6
+        local hitbox = EntityGetFirstComponent(player, "HitboxComponent")
+        if hitbox ~= nil then
+            local offset_x, offset_y = ComponentGetValue2(hitbox, "offset")
+            player_y = player_y + ComponentGetValue2(hitbox, "aabb_max_y") + offset_y
+        end
 
-        local y = y + offset_y
+        local x, y = get_pos_on_screen(player_x, player_y, gui)
         table.insert(widgets, function()
             GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
             GuiText(gui, x, y, "P" .. player_data.index)
         end)
 
-        local x = x + offset_x
+        local x = x + 6
         local y = y + 3
         local width = 4
         local height = 4
@@ -742,7 +705,6 @@ end
 function OnWorldPostUpdate()
     if player_spawned then
         update_camera_post()
-        update_gui_post()
         update_gui_mod()
     end
 end

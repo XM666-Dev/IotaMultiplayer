@@ -1,4 +1,12 @@
-﻿alpha-0.9.4-20241020
+﻿alpha-0.9.5-20241027
+-fix kick no friendly fire do not work properly
+-improve player gui offset, looks prettier now
+-fix player cannot drag inventory items after restarting the game
+-fix corpse sharing text flickering
+-fix player cannot pick up spell cards (still not perfect with flickering gui)
+-add compatibility with spell lab shugged
+
+alpha-0.9.4-20241020
 -improve coop gui
 -improve camera zoom
 -fix wheel switching (not completed yet)

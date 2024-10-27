@@ -143,7 +143,11 @@ function get_attack_ranged_pos(entity)
     local attacks = EntityGetComponent(entity, "AIAttackComponent") or {}
     local attack_table = get_attack_table(entity, ai, attacks)
     local x, y, rotation, scale_x, scale_y = EntityGetTransform(entity)
-    return transform_mult(x, y, rotation, scale_x, scale_y, attack_table.offset_x, attack_table.offset_y, 0, 1, 1)
+    local pos_x, pos_y = attack_table.offset_x, attack_table.offset_y
+    pos_x, pos_y = vec_rotate(pos_x, pos_y, rotation)
+    pos_x, pos_y = vec_scale(pos_x, pos_y, scale_x, scale_y)
+    pos_x, pos_y = vec_add(pos_x, pos_y, x, y)
+    return pos_x, pos_y
 end
 
 function entity_shoot(shooter)
