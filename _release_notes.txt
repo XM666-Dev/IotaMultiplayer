@@ -1,4 +1,12 @@
-﻿alpha-0.9.5-20241027
+﻿alpha-0.9.6-20250222
+-fix autoaim affect projectile velocity
+-fix resurrect text drawing
+-fix temple share bug
+-improve perk share compatibility
+-optimize code
+-fix polymorph attack
+
+alpha-0.9.5-20241027
 -fix kick no friendly fire do not work properly
 -improve player gui offset, looks prettier now
 -fix player cannot drag inventory items after restarting the game

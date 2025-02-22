@@ -1,5 +1,22 @@
-local f = item_pickup
-function _G.item_pickup(entity_item, entity_who_picked, name)
-    EntityKill = function() end
-    f(entity_item, entity_who_picked, name)
+dofile_once("mods/iota_multiplayer/files/scripts/lib/environment.lua")
+dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
+
+local Share = Entity{shared_indexs = SerializedField(VariableField("iota_multiplayer.shared_indexs", "value_string", "{}"))}
+local raw_item_pickup = item_pickup
+function item_pickup(item, picker, name)
+    local share_data = Share(item)
+    local picker_data = Player(picker)
+    local shared_indexs = share_data.shared_indexs
+    table.insert(shared_indexs, picker_data.index)
+    share_data.shared_indexs = shared_indexs
+
+    local share = #shared_indexs < #get_players_including_disabled()
+    local raw_entity_kill = EntityKill
+    if share then
+        EntityKill = function() end
+    end
+    raw_item_pickup(item, picker, name)
+    if share then
+        EntityKill = raw_entity_kill
+    end
 end

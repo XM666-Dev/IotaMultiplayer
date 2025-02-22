@@ -2,20 +2,22 @@
 --Github https://github.com/XM666-Dev/IotaMultiplayer
 
 dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
+local nxml = dofile_once("mods/iota_multiplayer/files/scripts/lib/nxml.lua")
 
-ModLuaFileAppend("mods/mnee/bindings.lua", "mods/iota_multiplayer/files/scripts/mnee.lua")
 ModLuaFileAppend("data/scripts/biomes/mountain/mountain_left_entrance.lua", "mods/iota_multiplayer/files/scripts/biomes/mountain/mountain_left_entrance_appends.lua")
-ModLuaFileAppend("data/scripts/biomes/temple_altar.lua", "mods/iota_multiplayer/files/scripts/biomes/temple_altar_appends.lua")
 ModLuaFileAppend("data/scripts/items/heart_fullhp_temple.lua", "mods/iota_multiplayer/files/scripts/items/share_appends.lua")
 ModLuaFileAppend("data/scripts/items/spell_refresh.lua", "mods/iota_multiplayer/files/scripts/items/share_appends.lua")
-local filenames = ModLuaFileGetAppends("data/scripts/perks/perk.lua")
-table.insert(filenames, 1, "mods/iota_multiplayer/files/scripts/perks/perk_appends.lua")
-ModLuaFileSetAppends("data/scripts/perks/perk.lua", filenames)
-ModTextFileSetContent("mods/iota_multiplayer/files/scripts/get_player_appends.lua", [[
-dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
-function get_player() return get_player_at_index(mod.camera_center_index) end
-]])
+for xml in nxml.edit_file("data/entities/items/pickup/heart_fullhp_temple.xml") do
+    xml:create_child("LuaComponent", {script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/share_pickup.lua"})
+end
+for xml in nxml.edit_file("data/entities/items/pickup/spell_refresh.xml") do
+    xml:create_child("LuaComponent", {script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/share_pickup.lua"})
+end
+ModLuaFileAppend("data/scripts/biomes/temple_altar.lua", "mods/iota_multiplayer/files/scripts/biomes/temple_altar_appends.lua")
+ModLuaFileAppend("data/scripts/perks/perk.lua", "mods/iota_multiplayer/files/scripts/perks/perk_appends.lua")
+ModLuaFileAppend("mods/mnee/bindings.lua", "mods/iota_multiplayer/files/scripts/mnee.lua")
 ModLuaFileAppend("mods/spell_lab_shugged/files/gui/get_player.lua", "mods/iota_multiplayer/files/scripts/get_player_appends.lua")
+ModTextFileSetContent("mods/iota_multiplayer/files/scripts/get_player_appends.lua", 'dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua") function get_player() return get_player_at_index(mod.camera_center_index) end')
 
 append_translations("mods/iota_multiplayer/files/translations.csv")
 
@@ -29,7 +31,7 @@ local function get_magic_numbers()
     return t
 end
 local function MagicNumbers(t)
-    local list = { "<MagicNumbers " }
+    local list = {"<MagicNumbers "}
     for k, v in pairs(t) do
         local value_type = type(v)
         if value_type == "number" then
@@ -48,7 +50,7 @@ local function add_magic_numbers(t)
     ModMagicNumbersFileAdd("mods/iota_multiplayer/files/magic_numbers.xml")
 end
 local magic_numbers = get_magic_numbers()
-local mod_magic_numbers = { UI_COOP_QUICK_INVENTORY_HEIGHT = 0, UI_COOP_STAT_BARS_HEIGHT = 0 }
+local mod_magic_numbers = {UI_COOP_QUICK_INVENTORY_HEIGHT = 0, UI_COOP_STAT_BARS_HEIGHT = 0}
 
 if GameGetWorldStateEntity() == 0 then
     ModSettingSet("iota_multiplayer.camera_zoom_max", ModSettingGetNextValue("iota_multiplayer.camera_zoom_max"))
@@ -82,7 +84,7 @@ local function get_camera_info()
         end
         --if math.abs(x - center_x) < safe_w and math.abs(y - center_y) < safe_h then
         if not ModSettingGet("iota_multiplayer.camera_unique") or player_data.index == mod.camera_center_index then
-            table.insert(positions, { x, y })
+            table.insert(positions, {x, y})
         end
         --end
     end
@@ -125,22 +127,21 @@ function OnWorldInitialized()
     end
 end
 
+local receiver
 function OnPlayerSpawned(player)
     player_spawned = true
-    debug_print("player_spawned_once", GameHasFlagRun("iota_multiplayer.player_spawned_once"))
-    if has_flag_run_or_add("iota_multiplayer.player_spawned_once") then
-        return
-    end
     local player_data = Player(player)
     player_data:add()
-    EntityAddComponent2(mod.id, "LuaComponent", { script_source_file = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua" })
-    EntityAddComponent2(mod.id, "ElectricityReceiverComponent", { electrified_msg_interval_frames = 1 })
-    EntityAddComponent2(mod.id, "LuaComponent", { script_electricity_receiver_electrified = "mods/iota_multiplayer/files/scripts/magic/camera_update_pre.lua" })
-    EntityAddComponent2(mod.id, "LuaComponent", { script_source_file = "mods/iota_multiplayer/files/scripts/magic/camera_update_post.lua" })
+    local entity = EntityCreateNew()
+    EntityAddComponent2(entity, "LuaComponent", {script_source_file = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua"})
+    EntityAddComponent2(entity, "LuaComponent", {script_source_file = "mods/iota_multiplayer/files/scripts/items/share_pickup.lua"})
+    EntityAddComponent2(entity, "LuaComponent", {script_electricity_receiver_electrified = "mods/iota_multiplayer/files/scripts/magic/camera_update_pre.lua"})
+    EntityAddComponent2(entity, "LuaComponent", {script_source_file = "mods/iota_multiplayer/files/scripts/magic/camera_update_post.lua"})
+    receiver = EntityAddComponent2(entity, "ElectricityReceiverComponent", {electrified_msg_interval_frames = 1})
 end
 
 local function mnin_stick_raw(mod_id, bind_id, pressed_mode, is_vip, inmode)
-    local abort_tbl = { { 0, 0 }, false, { false, false }, 0 }
+    local abort_tbl = {{0, 0}, false, {false, false}, 0}
     if (GameHasFlagRun(mnee.SERV_MODE) and not (mnee.ignore_service_mode)) then return unpack(abort_tbl) end
     if (GameHasFlagRun(mnee.TOGGLER) and not (is_vip)) then return unpack(abort_tbl) end
     if (not (mnee.is_priority_mod(mod_id))) then return unpack(abort_tbl) end
@@ -155,7 +156,7 @@ local function mnin_stick_raw(mod_id, bind_id, pressed_mode, is_vip, inmode)
     local val_y, gone_y, buttoned_y = mnee.mnin_axis(mod_id, binding.axes[2], true, pressed_mode, is_vip, inmode)
     local direction = math.rad(math.floor(math.deg(math.atan2(val_y, val_x)) + 0.5))
     val_x, val_y = pen.rounder(mnee.apply_deadzone(math.min(val_x, 1), binding.jpad_type, binding.deadzone), acc), pen.rounder(mnee.apply_deadzone(math.min(val_y, 1), binding.jpad_type, binding.deadzone), acc)
-    return { math.min(val_x, 1), math.min(val_y, 1) }, gone_x or gone_y, { buttoned_x, buttoned_y }, direction
+    return {math.min(val_x, 1), math.min(val_y, 1)}, gone_x or gone_y, {buttoned_x, buttoned_y}, direction
 end
 local function is_pressed(a, b, emulated)
     return (a ~= b or not emulated) and b ~= 0
@@ -184,11 +185,17 @@ local function update_controls()
             player_data.controls.mButtonLastFrameFire = get_frame_num_next()
         end
         if player_data.controls.polymorph_hax and player_data.controls.polymorph_next_attack_frame <= get_frame_num_next() and player_data.controls.mButtonFrameFire == get_frame_num_next() then
-            entity_shoot(player)
             local ai = EntityGetFirstComponentIncludingDisabled(player, "AnimalAIComponent")
             local attacks = EntityGetComponent(player, "AIAttackComponent") or {}
-            local attack_table = get_attack_table(player, ai, attacks)
-            player_data.controls.polymorph_next_attack_frame = get_frame_num_next() + attack_table.frames_between
+            local attack_info = get_attack_info(player, ai, attacks)
+            local controls = EntityGetFirstComponent(player, "ControlsComponent")
+            if controls ~= nil then
+                local x, y = get_attack_ranged_pos(player, attack_info)
+                local aiming_vector_x, aiming_vector_y = ComponentGetValue2(controls, "mAimingVector")
+                local projectile_entity = EntityLoad(attack_info.entity_file, x, y)
+                GameShootProjectile(player, x, y, x + aiming_vector_x, y + aiming_vector_y, projectile_entity)
+            end
+            player_data.controls.polymorph_next_attack_frame = get_frame_num_next() + attack_info.frames_between
         end
 
         player_data.controls.mButtonDownFire2 = player_data:mnin_bind("sprayflask", true, false, false, false, "guied")
@@ -290,19 +297,19 @@ local function update_controls()
             local aiming_vector_x, aiming_vector_y = mouse_position_x - center_x, mouse_position_y - center_y
             local magnitude = math.max(math.sqrt(aiming_vector_x * aiming_vector_x + aiming_vector_y * aiming_vector_y), CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS)
             local aiming_vector_normalized_x, aiming_vector_normalized_y = aiming_vector_x / magnitude, aiming_vector_y / magnitude
-            player_data.controls.mAimingVector = { aiming_vector_x, aiming_vector_y }
-            player_data.controls.mAimingVectorNormalized = { aiming_vector_normalized_x, aiming_vector_normalized_y }
+            player_data.controls.mAimingVector = {aiming_vector_x, aiming_vector_y}
+            player_data.controls.mAimingVectorNormalized = {aiming_vector_normalized_x, aiming_vector_normalized_y}
             local mouse_position_raw_prev = player_data.controls.mMousePositionRaw
-            player_data.controls.mMousePosition = { mouse_position_x, mouse_position_y }
-            player_data.controls.mMousePositionRaw = { mouse_position_raw_x, mouse_position_raw_y }
+            player_data.controls.mMousePosition = {mouse_position_x, mouse_position_y}
+            player_data.controls.mMousePositionRaw = {mouse_position_raw_x, mouse_position_raw_y}
             player_data.controls.mMousePositionRawPrev = mouse_position_raw_prev
-            player_data.controls.mMouseDelta = { mouse_position_raw_x - mouse_position_raw_prev[1], mouse_position_raw_y - mouse_position_raw_prev[2] }
+            player_data.controls.mMouseDelta = {mouse_position_raw_x - mouse_position_raw_prev[1], mouse_position_raw_y - mouse_position_raw_prev[2]}
             goto continue
         end
         local aim_raw = mnin_stick_raw("iota_multiplayer" .. player_data.index, "aim")
         if player_data:is_inventory_open() then
-            aim = { 0, 0 }
-            aim_raw = { 0, 0 }
+            aim = {0, 0}
+            aim_raw = {0, 0}
         end
         local aiming_vector_non_zero_latest = player_data.controls.mAimingVectorNonZeroLatest
         if is_pressed(tonumber(player_data.previous_aim_x), aim_raw[1], aim_emulated[1]) or is_pressed(tonumber(player_data.previous_aim_y), aim_raw[2], aim_emulated[2]) then
@@ -310,7 +317,7 @@ local function update_controls()
         end
         player_data.previous_aim_x = ("%.16a"):format(aim_raw[1])
         player_data.previous_aim_y = ("%.16a"):format(aim_raw[2])
-        player_data.controls.mAimingVector = { aiming_vector_non_zero_latest[1] * CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS, aiming_vector_non_zero_latest[2] * CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS }
+        player_data.controls.mAimingVector = {aiming_vector_non_zero_latest[1] * CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS, aiming_vector_non_zero_latest[2] * CONTROLS_AIMING_VECTOR_FULL_LENGTH_PIXELS}
         player_data.controls.mAimingVectorNormalized = aim
         player_data.controls.mAimingVectorNonZeroLatest = aiming_vector_non_zero_latest
         player_data.controls.mGamepadAimingVectorRaw = aim
@@ -318,35 +325,13 @@ local function update_controls()
         local mouse_position_raw_x, mouse_position_raw_y = get_pos_on_screen(mouse_position())
         local mouse_position_raw_prev = player_data.controls.mMousePositionRaw
         player_data.controls.mMousePosition = mouse_position
-        player_data.controls.mMousePositionRaw = { mouse_position_raw_x, mouse_position_raw_y }
+        player_data.controls.mMousePositionRaw = {mouse_position_raw_x, mouse_position_raw_y}
         player_data.controls.mMousePositionRawPrev = mouse_position_raw_prev
-        player_data.controls.mMouseDelta = { mouse_position_raw_x - mouse_position_raw_prev[1], mouse_position_raw_y - mouse_position_raw_prev[2] }
+        player_data.controls.mMouseDelta = {mouse_position_raw_x - mouse_position_raw_prev[1], mouse_position_raw_y - mouse_position_raw_prev[2]}
         ::continue::
     end
 end
 
-local function get_item_index(item)
-    local item_component = EntityGetFirstComponentIncludingDisabled(item, "ItemComponent")
-    local ability_component = EntityGetFirstComponentIncludingDisabled(item, "AbilityComponent")
-    if item_component ~= nil and ability_component ~= nil then
-        return ComponentGetValue2(item_component, "inventory_slot") + (ComponentGetValue2(ability_component, "use_gun_script") and 0 or 4)
-    end
-end
-local function get_item(player, index)
-    local children = get_children(player)
-    local i, quick_inventory = table.find(children, function(v) return EntityGetName(v) == "inventory_quick" end)
-    local items = get_children(quick_inventory)
-    for i, item in ipairs(items) do
-        if get_item_index(item) == index then
-            table.sort(items, function(a, b)
-                local index_a = get_item_index(a)
-                local index_b = get_item_index(b)
-                return index_a ~= nil and index_b ~= nil and index_a < index_b
-            end)
-            return item, table.find(items, function(v) return v == item end)
-        end
-    end
-end
 local function update_gui()
     local gui_enabled_player = get_player_at_index_including_disabled(mod.gui_enabled_index)
     local gui_enabled_player_data = Player(gui_enabled_player)
@@ -365,10 +350,10 @@ local function update_gui()
 
     if next_gui_enabled_player ~= nil and next_gui_enabled_player ~= gui_enabled_player then
         next_gui_enabled_player_data = Player(next_gui_enabled_player)
-        if next_gui_enabled_player_data.gui ~= nil and gui_enabled_player_data.gui ~= nil then
+        if next_gui_enabled_player_data.gui ~= nil and gui_enabled_player ~= nil and gui_enabled_player_data.gui ~= nil then
             next_gui_enabled_player_data.gui.wallet_money_target = gui_enabled_player_data.gui.wallet_money_target
         end
-        if gui_enabled_player_data.gui ~= nil then
+        if gui_enabled_player ~= nil and gui_enabled_player_data.gui ~= nil then
             remove_component(gui_enabled_player_data.gui._id)
             EntityAddComponent2(gui_enabled_player, "InventoryGuiComponent")
         end
@@ -387,7 +372,7 @@ local function update_gui()
     end
 
     local gui_enabled_player = get_player_at_index_including_disabled(mod.gui_enabled_index)
-    local i, player = table.find(players_including_disabled, function(v) return Player(v).controls.mButtonFrameInteract == get_frame_num_next() end)
+    local player = table.find(players_including_disabled, function(v) return Player(v).controls.mButtonFrameInteract == get_frame_num_next() end)
     if player ~= nil and player ~= gui_enabled_player then
         local player_data = Player(player)
         player_data.gui.mAlpha = -0.2
@@ -414,18 +399,7 @@ local function add_script_throw(item)
         add_script_throw(child)
     end
 end
-local share_class = Class {
-    shared_indexs = VariableAccessor("iota_multiplayer.shared_indexs", "value_string", "{}"),
-}
-local function Share(entity)
-    return setmetatable({ id = entity }, share_class)
-end
-local hint_class = Class {
-    index = VariableAccessor("iota_multiplayer.index", "value_int"),
-}
-local function Hint(entity)
-    return setmetatable({ id = entity }, hint_class)
-end
+local Share = Entity{shared_indexs = SerializedField(VariableField("iota_multiplayer.shared_indexs", "value_string", "{}"))}
 local function update_common()
     local players = get_players()
     local players_including_disabled = get_players_including_disabled()
@@ -460,6 +434,30 @@ local function update_common()
 
     for i, player in ipairs(players) do
         local player_data = Player(player)
+        local item = table.iterate(table.filter(EntityGetInRadius(0, 0, math.huge), function(v)
+            local item = EntityGetFirstComponent(v, "ItemComponent")
+            local pickable = item ~= nil and ComponentGetValue2(item, "is_pickable")
+            if EntityGetFilename(v) == "data/entities/items/pickup/heart_fullhp_temple.xml" or EntityGetFilename(v) == "data/entities/items/pickup/spell_refresh.xml" then
+                local share_data = Share(v)
+                if table.find(share_data.shared_indexs, player_data.index) then
+                    pickable = false
+                end
+            end
+            local x, y = EntityGetTransform(v)
+            local distance2 = get_distance2(x, y, EntityGetTransform(player))
+            return pickable and distance2 < math.min(ComponentGetValue2(item, "item_pickup_radius"), 14.1) ^ 2
+        end), function(a, b)
+            local ax, ay = EntityGetTransform(a)
+            local a_distance2 = get_distance2(ax, ay, EntityGetTransform(player))
+            local bx, by = EntityGetTransform(b)
+            local b_distance2 = get_distance2(bx, by, EntityGetTransform(player))
+            return a_distance2 < b_distance2
+        end)
+        if item == nil then
+            item = -1
+        end
+        player_data.pick_upper_.only_pick_this_entity = item
+
         if player_data.pick_upper ~= nil then
             player_data.pick_upper.is_immune_to_kicks = not ModSettingGet("iota_multiplayer.friendly_fire_kick_drop")
         end
@@ -476,51 +474,25 @@ local function update_common()
             end
         end
 
-        local hints = EntityGetWithTag("iota_multiplayer.hint")
-        local i, hint = table.find(hints, function(v) return Hint(v).index == player_data.index end)
-        if hint == nil then
-            hint = EntityCreateNew()
-            EntityAddTag(hint, "iota_multiplayer.hint")
-            EntityAddComponent2(hint, "VariableStorageComponent", { _tags = "iota_multiplayer.index,enabled_in_inventory" })
-            local hint_data = Hint(hint)
-            hint_data.index = player_data.index
-            EntityAddComponent2(hint, "LuaComponent", { _tags = "enabled_in_inventory", script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/corpse_pickup.lua" })
-        end
-        EntityRemoveFromParent(hint)
-        local item = EntityGetFirstComponentIncludingDisabled(hint, "ItemComponent") or EntityAddComponent2(hint, "ItemComponent", {
-            _tags = "enabled_in_inventory", play_pick_sound = false,
-        })
-
-        ComponentSetValue2(item, "item_name", "$iota_multiplayer.item_resurrect")
-        ComponentSetValue2(item, "custom_pickup_string", "$iota_multiplayer.itempickup_use")
-
         local x, y = EntityGetTransform(player)
         local coop_respawn = EntityGetInRadiusWithTag(x, y, 100, "coop_respawn")[1]
         local coop_respawn_data = Share(coop_respawn)
-        local shared_indexs
         if coop_respawn ~= nil then
-            local to_x, to_y = EntityGetTransform(coop_respawn)
-            local hint_x, hint_y = vec_normalize(vec_sub(to_x, to_y, x, y))
-            hint_x, hint_y = vec_add(x, y, vec_mult(hint_x, hint_y, ComponentGetValue2(item, "item_pickup_radius")))
-            EntitySetTransform(hint, hint_x, hint_y)
-
-            shared_indexs = deserialize(coop_respawn_data.shared_indexs)
+            local shared_indexs = coop_respawn_data.shared_indexs
             local dead_players = table.filter(players_including_disabled, function(v) return Player(v).dead end)
             for i, dead_player in ipairs(dead_players) do
                 local dead_player_data = Player(dead_player)
-                if dead_player_data:mnin_bind("interact", true, true) then
-                    if table.find(shared_indexs, function(v) return v == dead_player_data.index end) then goto continue end
+                if dead_player_data:mnin_bind("interact", true, true) and not table.find(shared_indexs, dead_player_data.index) then
                     table.insert(shared_indexs, dead_player_data.index)
-                    coop_respawn_data.shared_indexs = serialize(shared_indexs)
+                    coop_respawn_data.shared_indexs = shared_indexs
 
                     dead_player_data:set_dead(false)
                     local from_x, from_y = EntityGetTransform(dead_player)
+                    local to_x, to_y = EntityGetTransform(coop_respawn)
                     teleport(dead_player, from_x, from_y, to_x, to_y)
                 end
-                ::continue::
             end
         end
-        set_component_enabled(item, coop_respawn ~= nil and #shared_indexs < #players_including_disabled)
     end
 
     for i, player in ipairs(players_including_disabled) do
@@ -528,29 +500,7 @@ local function update_common()
         if player_data.dead then
             GamePlayAnimation(player, "intro_sleep", 0x7FFFFFFF)
 
-            local hints = EntityGetWithTag("iota_multiplayer.hint")
-            local i, hint = table.find(hints, function(v) return Hint(v).index == player_data.index end)
-            if hint == nil then
-                hint = EntityCreateNew()
-                EntityAddTag(hint, "iota_multiplayer.hint")
-                EntityAddComponent2(hint, "VariableStorageComponent", { _tags = "iota_multiplayer.index,enabled_in_inventory" })
-                local hint_data = Hint(hint)
-                hint_data.index = player_data.index
-                EntityAddComponent2(hint, "LuaComponent", { _tags = "enabled_in_inventory", script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/corpse_pickup.lua" })
-            end
-            EntityRemoveFromParent(hint)
-            local item = EntityGetFirstComponentIncludingDisabled(hint, "ItemComponent") or EntityAddComponent2(hint, "ItemComponent", {
-                _tags = "enabled_in_inventory", play_pick_sound = false,
-            })
-
-            ComponentSetValue2(item, "item_name", "$iota_multiplayer.item_corpse")
-            ComponentSetValue2(item, "custom_pickup_string", "$itempickup_open")
-
-            local x, y = EntityGetTransform(player)
-            EntitySetTransform(hint, x, y)
-
-            set_component_enabled(item, player_data.controls.mButtonFrameInventory == get_frame_num_next() == player_data:is_inventory_open() or InputIsKeyJustDown(Key_ESCAPE)) --need corpse sharing being completed
-            --player_data.controls.mButtonFrameInventory == get_frame_num_next() ~= player_data:is_inventory_open() and not InputIsKeyJustDown(Key_ESCAPE)
+            set_component_enabled(player_data.corpse._id, player_data.controls.mButtonFrameInventory == get_frame_num_next() == player_data:is_inventory_open() or InputIsKeyJustDown(Key_ESCAPE))
         end
         local arm_r = player_data:get_arm_r()
         if arm_r ~= nil and player_data.sprite ~= nil then
@@ -587,7 +537,7 @@ local function update_common()
     local player_positions = {}
     for i, player in ipairs(players_including_disabled) do
         local x, y = EntityGetTransform(player)
-        player_positions[i] = { x, y }
+        player_positions[i] = {x, y}
     end
     mod.player_positions = player_positions
 end
@@ -617,10 +567,7 @@ local function update_camera()
         end
     end
     if ModSettingGet("iota_multiplayer.camera_zoom_max") ~= ModSettingGet("iota_multiplayer.camera_zoom_min") then
-        local electricity_receiver = EntityGetFirstComponent(mod.id, "ElectricityReceiverComponent")
-        if electricity_receiver ~= nil then
-            ComponentSetValue2(electricity_receiver, "mLastFrameElectrified", get_frame_num_next())
-        end
+        ComponentSetValue2(receiver, "mLastFrameElectrified", get_frame_num_next())
     end
 end
 
@@ -642,8 +589,10 @@ for i = 0, 2 do
     end
 end
 ModImageSetPixel(bar_bg, 1, 1, fill_color)
+local previous_respawn = false
 local function update_gui_mod()
-    if #get_players_including_disabled() < 2 then return end
+    local players_including_disabled = get_players_including_disabled()
+    if #players_including_disabled < 2 then return end
     GuiStartFrame(gui)
 
     GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
@@ -691,6 +640,27 @@ local function update_gui_mod()
         GuiZSetForNextWidget(gui, #widgets - i + 1001)
         f()
     end
+    local respawn = false
+    for i, player in ipairs(players) do
+        local x, y = EntityGetTransform(player)
+        local coop_respawn = EntityGetInRadiusWithTag(x, y, 100, "coop_respawn")[1]
+        if coop_respawn ~= nil then
+            local coop_respawn_data = Share(coop_respawn)
+            if #coop_respawn_data.shared_indexs < #players_including_disabled and #players < #players_including_disabled then
+                respawn = true
+                break
+            end
+        end
+    end
+    if respawn then
+        GuiAnimateBegin(gui)
+        GuiAnimateAlphaFadeIn(gui, 3458923234, 0.1, 0.0, respawn and not previous_respawn)
+        GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
+        local screen_width, screen_height = GuiGetScreenDimensions(gui)
+        GuiText(gui, screen_width / 2, screen_height - 40, GameTextGet("$iota_multiplayer.itempickup_use", "[E]", GameTextGet("$iota_multiplayer.item_resurrect")))
+        GuiAnimateEnd(gui)
+    end
+    previous_respawn = respawn
 end
 
 function OnWorldPreUpdate()

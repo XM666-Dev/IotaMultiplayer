@@ -3,7 +3,7 @@ dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 local blocks
 local block_frame
 local function consume_block(consumer, blocked)
-    local i, block = table.find(blocks, function(v) return v.enabled and v.blocked == blocked and not table.find(v.consumers, consumer) end)
+    local block = table.find(blocks, function(v) return v.enabled and v.blocked == blocked and not table.find(v.consumers, consumer) end)
     if block ~= nil then
         block.enabled = false
         table.insert(block.consumers, consumer)
@@ -19,9 +19,9 @@ function kick(kicked)
             block_frame = frame
             blocks = {}
         end
-        table.insert(blocks, { enabled = true, blocked = kicked, consumers = {} })
+        table.insert(blocks, {enabled = true, blocked = kicked, consumers = {}})
     elseif EntityHasTag(kicked, "iota_multiplayer.player") then
-        local i, block = table.find(blocks, function(v) return v.blocked == kicked end)
+        local block = table.find(blocks, function(v) return v.blocked == kicked end)
         block.enabled = true
     end
 end
