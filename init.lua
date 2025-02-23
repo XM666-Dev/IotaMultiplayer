@@ -7,11 +7,10 @@ local nxml = dofile_once("mods/iota_multiplayer/files/scripts/lib/nxml.lua")
 ModLuaFileAppend("data/scripts/biomes/mountain/mountain_left_entrance.lua", "mods/iota_multiplayer/files/scripts/biomes/mountain/mountain_left_entrance_appends.lua")
 ModLuaFileAppend("data/scripts/items/heart_fullhp_temple.lua", "mods/iota_multiplayer/files/scripts/items/share_appends.lua")
 ModLuaFileAppend("data/scripts/items/spell_refresh.lua", "mods/iota_multiplayer/files/scripts/items/share_appends.lua")
-for xml in nxml.edit_file("data/entities/items/pickup/heart_fullhp_temple.xml") do
-    xml:create_child("LuaComponent", {script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/share_pickup.lua"})
-end
-for xml in nxml.edit_file("data/entities/items/pickup/spell_refresh.xml") do
-    xml:create_child("LuaComponent", {script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/share_pickup.lua"})
+for i, filename in ipairs{"data/scripts/items/heart_fullhp_temple.lua", "data/scripts/items/spell_refresh.lua"} do
+    for xml in nxml.edit_file(filename) do
+        xml:create_child("LuaComponent", {script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/share_pickup.lua"})
+    end
 end
 ModLuaFileAppend("data/scripts/biomes/temple_altar.lua", "mods/iota_multiplayer/files/scripts/biomes/temple_altar_appends.lua")
 ModLuaFileAppend("data/scripts/perks/perk.lua", "mods/iota_multiplayer/files/scripts/perks/perk_appends.lua")
@@ -50,14 +49,14 @@ local function add_magic_numbers(t)
     ModMagicNumbersFileAdd("mods/iota_multiplayer/files/magic_numbers.xml")
 end
 local magic_numbers = get_magic_numbers()
-local mod_magic_numbers = {UI_COOP_QUICK_INVENTORY_HEIGHT = 0, UI_COOP_STAT_BARS_HEIGHT = 0}
+local magic_numbers_mod = {UI_COOP_QUICK_INVENTORY_HEIGHT = 0, UI_COOP_STAT_BARS_HEIGHT = 0}
 
 if GameGetWorldStateEntity() == 0 then
     ModSettingSet("iota_multiplayer.camera_zoom_max", ModSettingGetNextValue("iota_multiplayer.camera_zoom_max"))
 end
 if ModSettingGet("iota_multiplayer.camera_zoom_max") ~= 1 then
-    mod_magic_numbers.VIRTUAL_RESOLUTION_X = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X) * ModSettingGet("iota_multiplayer.camera_zoom_max")
-    mod_magic_numbers.VIRTUAL_RESOLUTION_Y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y) * ModSettingGet("iota_multiplayer.camera_zoom_max")
+    magic_numbers_mod.VIRTUAL_RESOLUTION_X = tonumber(magic_numbers.VIRTUAL_RESOLUTION_X) * ModSettingGet("iota_multiplayer.camera_zoom_max")
+    magic_numbers_mod.VIRTUAL_RESOLUTION_Y = tonumber(magic_numbers.VIRTUAL_RESOLUTION_Y) * ModSettingGet("iota_multiplayer.camera_zoom_max")
     ModTextFileSetContent("data/shaders/post_final.vert", ModTextFileGetContent("data/shaders/post_final.vert")
         :gsub(("90.0 * camera_inv_zoom_ratio"):raw(), ("90.0 * camera_inv_zoom_ratio * %f"):format(ModSettingGet("iota_multiplayer.camera_zoom_max")))
         :gsub("\n", "\nuniform vec4 internal_zoom;", 1)
@@ -119,7 +118,7 @@ function get_resolution(gui)
     return width * internal_zoom, height * internal_zoom
 end
 
-add_magic_numbers(mod_magic_numbers)
+add_magic_numbers(magic_numbers_mod)
 
 function OnWorldInitialized()
     for i, pos in ipairs(mod.player_positions) do
