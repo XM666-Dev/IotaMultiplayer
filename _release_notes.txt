@@ -1,4 +1,8 @@
-﻿alpha-0.9.6-20250222
+﻿alpha-0.9.6-20250223
+-fix share setting don't work
+-fix ng+ remove players
+
+alpha-0.9.6-20250222
 -fix autoaim affect projectile velocity
 -fix resurrect text drawing
 -fix temple share bug
