@@ -32,7 +32,7 @@ alpha-0.9.3-20241007
 -improve compatibility
 -add corpse sharing (not completed yet)
 -fix hint
--fix sth
+-fix minor bugs
 
 alpha-0.9.2-20241005
 -fix polymorph
