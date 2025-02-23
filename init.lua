@@ -7,7 +7,7 @@ local nxml = dofile_once("mods/iota_multiplayer/files/scripts/lib/nxml.lua")
 ModLuaFileAppend("data/scripts/biomes/mountain/mountain_left_entrance.lua", "mods/iota_multiplayer/files/scripts/biomes/mountain/mountain_left_entrance_appends.lua")
 ModLuaFileAppend("data/scripts/items/heart_fullhp_temple.lua", "mods/iota_multiplayer/files/scripts/items/share_appends.lua")
 ModLuaFileAppend("data/scripts/items/spell_refresh.lua", "mods/iota_multiplayer/files/scripts/items/share_appends.lua")
-for i, filename in ipairs{"data/scripts/items/heart_fullhp_temple.lua", "data/scripts/items/spell_refresh.lua"} do
+for i, filename in ipairs{"data/entities/items/pickup/heart_fullhp_temple.xml", "data/entities/items/pickup/spell_refresh.xml"} do
     for xml in nxml.edit_file(filename) do
         xml:create_child("LuaComponent", {script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/share_pickup.lua"})
     end
