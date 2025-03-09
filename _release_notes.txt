@@ -1,4 +1,19 @@
-﻿alpha-0.9.6-20250223
+﻿alpha-0.9.8-20250309
+-fix pickup flickering
+-fix corpse sharing inventory controls
+-fix corpse sharing crash
+-fix resurrect text drawing again
+-fix camera flash
+-add smooth zoom
+-improve camera center
+-add tinker share (stand near the owner)
+-fix polymorph attack
+-add auto teleport
+-add resurrect protection
+-fix no dead don't work
+-fix dead message
+
+alpha-0.9.7-20250223
 -fix share setting don't work
 -fix ng+ remove players
 

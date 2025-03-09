@@ -8,10 +8,10 @@ local raw_perk_pickup = perk_pickup
 function perk_pickup(entity_item, entity_who_picked, item_name, do_cosmetic_fx, kill_other_perks, no_perk_entity_)
     local x, y = EntityGetTransform(entity_item)
     local perk_stats = EntityGetInRadiusWithTag(x, y, 30, "iota_multiplayer.perk_stats")[1]
-    local perk_stats_data = PerkStats(perk_stats)
-    local share = ModSettingGet("iota_multiplayer.share_temple_perk") and perk_stats ~= nil and perk_stats_data.spawn_count < #get_players_including_disabled()
+    local perk_stats_object = PerkStats(perk_stats)
+    local share = ModSettingGet("iota_multiplayer.share_temple_perk") and perk_stats ~= nil and perk_stats_object.spawn_count < #get_players_including_disabled()
     if share then
-        perk_stats_data.spawn_count = perk_stats_data.spawn_count + 1
+        perk_stats_object.spawn_count = perk_stats_object.spawn_count + 1
         for i, perk in ipairs(EntityGetWithTag("perk")) do
             EntityKill(perk)
         end

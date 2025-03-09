@@ -1,26 +1,26 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
-function polymorphing_to(string_entity_we_are_about_to_polymorph_to)
-    local this_data = Player(string_entity_we_are_about_to_polymorph_to)
-    table.insert(player_indexs, {
-        EntitiesGetMaxID() + 1,
-        this_data.index,
-    })
+local player_indexs = {}
+function polymorphing_to(polymorphed)
+    table.insert(player_indexs, {EntitiesGetMaxID() + 1, Player(polymorphed).index})
 end
 
-for i, v in ipairs(player_indexs or {}) do
-    local player, index = unpack(v)
-    local player_data = Player(player)
-    player_data.index = index
-    EntityAddTag(player, "iota_multiplayer.player")
-    local ai = EntityGetFirstComponent(player, "AnimalAIComponent")
-    if ai ~= nil then
-        set_component_enabled(ai, false)
+function ____cached_func()
+    for i, v in ipairs(player_indexs) do
+        local player, index = unpack(v)
+        local player_object = Player(player)
+        player_object:add()
+        player_object.index = index
+        player_object.controls_.polymorph_hax = true
+        local ai = EntityGetFirstComponent(player, "AnimalAIComponent")
+        if ai ~= nil then
+            set_component_enabled(ai, false)
+        end
+        local bound = EntityGetFirstComponent(player, "CameraBoundComponent")
+        if bound ~= nil then
+            remove_component(bound)
+        end
+        EntityAddComponent2(player, "StreamingKeepAliveComponent")
     end
-    local bound = EntityGetFirstComponent(player, "CameraBoundComponent")
-    if bound ~= nil then
-        remove_component(bound)
-    end
-    EntityAddComponent2(player, "StreamingKeepAliveComponent")
+    player_indexs = {}
 end
-player_indexs = {}

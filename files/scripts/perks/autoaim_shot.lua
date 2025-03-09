@@ -18,10 +18,10 @@ function shot(projectile)
     local velocity_x, velocity_y = GameGetVelocityCompVelocity(projectile)
     local velocity_direction = get_direction(0, 0, velocity_x, velocity_y)
 
-    local shooter_data = Player(shooter)
-    local x, y = shooter_data.controls.mAimingVectorNormalized()
+    local shooter_object = Player(shooter)
+    local x, y = shooter_object.controls.mAimingVectorNormalized()
     local length = x * x + y * y
-    local angle = math.pi / 4 * length
+    local angle = math.pi * 0.25 * length
 
     local enemies = table.filter(EntityGetWithTag("enemy"), function(enemy)
         local enemy_x, enemy_y = EntityGetFirstHitboxCenter(enemy)

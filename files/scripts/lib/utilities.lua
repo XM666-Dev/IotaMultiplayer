@@ -6,9 +6,14 @@ MAX_PLAYER_NUM = 8
 mod = Entity{
     id = {get = GameGetWorldStateEntity},
     gui_enabled_index = VariableField("iota_multiplayer.gui_enabled_index", "value_int"),
+    gui_owner_index = CombinedField(NumericField(FileField("mods/iota_multiplayer/files/gui_owner_index.txt")), function(v)
+        if v ~= nil then return v end
+        return mod.gui_enabled_index
+    end),
     camera_center_index = VariableField("iota_multiplayer.camera_center_index", "value_int"),
     money = VariableField("iota_multiplayer.money", "value_int"),
     player_positions = SerializedField(VariableField("iota_multiplayer.player_positions", "value_string", "{}")),
+    auto_teleport = VariableField("iota_multiplayer.auto_teleport", "value_bool"),
 } ()
 
 Player = Entity{
@@ -17,7 +22,7 @@ Player = Entity{
     listener = ComponentField("AudioListenerComponent"),
     gui = ComponentField("InventoryGuiComponent"),
     wallet = ComponentField("WalletComponent"),
-    pick_upper = ComponentField("ItemPickUpperComponent"),
+    pickupper = ComponentField("ItemPickUpperComponent"),
     damage_model = ComponentField("DamageModelComponent"),
     genome = ComponentField("GenomeDataComponent"),
     alive = ComponentField("StreamingKeepAliveComponent"),
@@ -25,8 +30,8 @@ Player = Entity{
     sprite = ComponentField("SpriteComponent", "character"),
     aiming_reticle = ComponentField("SpriteComponent", "aiming_reticle"),
     character_data = ComponentField("CharacterDataComponent"),
-    autoaim = ComponentField("LuaComponent", "iota_multiplayer.autoaim"),
-    corpse = ComponentField{"ItemComponent", item_name = "$iota_multiplayer.item_corpse", custom_pickup_string = "$itempickup_open", play_spinning_animation = false},
+    inventory = ComponentField("Inventory2Component"),
+    autoaim = ComponentField{"LuaComponent", "iota_multiplayer.autoaim", _tags = "iota_multiplayer.autoaim", _enabled = false, script_shot = "mods/iota_multiplayer/files/scripts/perks/autoaim_shot.lua"},
     index = VariableField("iota_multiplayer.index", "value_int"),
     previous_aim_x = VariableField("iota_multiplayer.previous_aim_x", "value_string"),
     previous_aim_y = VariableField("iota_multiplayer.previous_aim_y", "value_string"),
@@ -48,17 +53,7 @@ function Player:add()
         script_shot = "mods/iota_multiplayer/files/scripts/magic/player_friendly_fire.lua",
         script_damage_received = "mods/iota_multiplayer/files/scripts/magic/player_damage.lua",
         script_polymorphing_to = "mods/iota_multiplayer/files/scripts/magic/player_polymorph.lua",
-        script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/corpse_pickup.lua",
     })
-    EntityAddComponent2(self.id, "LuaComponent", {
-        script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/share_pickup.lua",
-    })
-    EntityAddComponent2(self.id, "LuaComponent", {
-        _tags = "iota_multiplayer.autoaim",
-        _enabled = false,
-        script_shot = "mods/iota_multiplayer/files/scripts/perks/autoaim_shot.lua",
-    })
-    self.index = #get_players_including_disabled()
 end
 
 function Player:get_arm_r()
@@ -66,7 +61,10 @@ function Player:get_arm_r()
 end
 
 function Player:is_inventory_open()
-    return self.gui ~= nil and self.gui.mActive
+    if self.index == mod.gui_owner_index then
+        self = Player(get_player_at_index_including_disabled(mod.gui_enabled_index))
+    end
+    return self.controls_.mButtonFrameInventory == get_frame_num_next() ~= (self.gui_.mActive or false) and not InputIsKeyJustDown(Key_ESCAPE)
 end
 
 function Player:mnin_bind(bind_id, dirty_mode, pressed_mode, is_vip, strict_mode, inmode)
@@ -85,6 +83,13 @@ function Player:jpad_check(bind_id)
     return mnee.jpad_check(mnee.get_pbd(mnee.get_bindings()["iota_multiplayer" .. self.index][bind_id]).main)
 end
 
+function Player:get_camera_pos()
+    if self.shooter ~= nil and self.inventory ~= nil then
+        return self.shooter.mDesiredCameraPos()
+    end
+    return EntityGetTransform(self.id)
+end
+
 function Player:set_dead(dead)
     if self.damage_model ~= nil then
         set_component_enabled(self.damage_model._id, not dead)
@@ -94,9 +99,6 @@ function Player:set_dead(dead)
     end
     if self.alive ~= nil then
         --set_component_enabled(self.alive._id, not dead)
-    end
-    if self.corpse ~= nil then
-        set_component_enabled(self.corpse._id, dead)
     end
     local polymorph
     local children = get_children(self.id)
@@ -129,10 +131,25 @@ function Player:set_dead(dead)
 
         if self.controls ~= nil then
             local controls_component = self.controls._id
-            for k in pairs(ComponentGetMembers(controls_component) or {}) do
-                if k:find("mButtonDown") and not k:find("mButtonDownDelayLine") then
-                    ComponentSetValue2(controls_component, k, false)
-                end
+            for i, field in ipairs{
+                "mButtonDownFire",
+                "mButtonDownFire2",
+                "mButtonDownThrow",
+                "mButtonDownInteract",
+                "mButtonDownLeft",
+                "mButtonDownRight",
+                "mButtonDownUp",
+                "mButtonDownDown",
+                "mButtonDownFly",
+                "mButtonDownChangeItemR",
+                "mButtonDownChangeItemL",
+                "mButtonDownInventory",
+                "mButtonDownDropItem",
+                "mButtonDownKick",
+                "mButtonDownLeftClick",
+                "mButtonDownRightClick",
+            } do
+                ComponentSetValue2(controls_component, field, false)
             end
         end
     else
@@ -157,19 +174,20 @@ function Player:set_dead(dead)
         end
         GamePrintImportant(GameTextGet("$log_coop_resurrected_player", self.index))
 
-        if self.damage_model ~= nil then
-            self.damage_model.hp = 0.04
-            self.damage_model.is_on_fire = false
-        end
+        self.damage_model_.hp = 0.04
+        self.damage_model_.is_on_fire = false
+        local protection_all = GetGameEffectLoadTo(self.id, "PROTECTION_ALL", true)
+        ComponentSetValue2(protection_all, "frames", 60)
     end
     self.dead = dead
 end
 
 function load_player(x, y)
     local player = EntityLoad("data/entities/player.xml", x, y)
-    local player_data = Player(player)
-    player_data:add()
-    player_data.load_frame = GameGetFrameNum()
+    local player_object = Player(player)
+    player_object:add()
+    player_object.index = #get_players_including_disabled()
+    player_object.load_frame = GameGetFrameNum()
     return player
 end
 
@@ -179,24 +197,24 @@ end
 
 function get_players()
     return table.filter(EntityGetWithTag("iota_multiplayer.player"), function(player)
-        local player_data = Player(player)
-        return not player_data.dead
+        local player_object = Player(player)
+        return not player_object.dead
     end)
 end
 
 function get_player_at_index_including_disabled(index)
     local players = EntityGetWithTag("iota_multiplayer.player")
     return table.find(players, function(player)
-        local player_data = Player(player)
-        return player_data.index == index
+        local player_object = Player(player)
+        return player_object.index == index
     end)
 end
 
 function get_player_at_index(index)
     local players = EntityGetWithTag("iota_multiplayer.player")
     return table.find(players, function(player)
-        local player_data = Player(player)
-        return player_data.index == index and not player_data.dead
+        local player_object = Player(player)
+        return player_object.index == index and not player_object.dead
     end)
 end
 
@@ -228,6 +246,9 @@ function perk_spawn_with_data(x, y, perk_data, script_item_picked_up)
     })
     EntityAddComponent2(entity, "LuaComponent", {
         script_item_picked_up = script_item_picked_up,
+    })
+    EntityAddComponent2(entity, "LuaComponent", {
+        script_item_picked_up = "mods/iota_multiplayer/files/scripts/items/share_pickup.lua",
     })
     return entity
 end

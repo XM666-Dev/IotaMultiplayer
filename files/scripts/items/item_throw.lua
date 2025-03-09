@@ -9,8 +9,8 @@ end
 function throw_item(from_x, from_y, to_x, to_y)
     local last_root = GetValueInteger("last_root", 0)
     if EntityHasTag(last_root, "iota_multiplayer.player") and not flag then
-        local player_data = Player(last_root)
-        if player_data.controls.mButtonFrameDropItem == GameGetFrameNum() and player_data:is_inventory_open() then
+        local player_object = Player(last_root)
+        if player_object.controls.mButtonFrameDropItem == GameGetFrameNum() and player_object:is_inventory_open() then
             this = GetUpdatedEntityID()
             local physics_body = EntityGetFirstComponentIncludingDisabled(this, "PhysicsBodyComponent")
             local item = EntityGetFirstComponentIncludingDisabled(this, "ItemComponent")

@@ -4,7 +4,7 @@ local entities = {}
 local components = {}
 local function insert_components(entity)
     for i, component in ipairs(EntityGetAllComponents(entity)) do
-        components[component] = ComponentGetIsEnabled(component)
+        table.insert(components, {component, ComponentGetIsEnabled(component)})
     end
     for i, child in ipairs(EntityGetAllChildren(entity) or {}) do
         insert_components(child)
@@ -19,8 +19,10 @@ function ____cached_func()
     for i, entity in ipairs(entities) do
         EntityRemoveFromParent(entity)
     end
-    for component, enabled in pairs(components) do
-        set_component_enabled(component, enabled)
+    for i, v in ipairs(components) do
+        if ComponentGetEntity(v[1]) ~= 0 then
+            set_component_enabled(unpack(v))
+        end
     end
     entities = {}
     components = {}
