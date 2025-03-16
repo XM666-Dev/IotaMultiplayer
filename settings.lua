@@ -1,14 +1,19 @@
 dofile_once("data/scripts/lib/mod_settings.lua")
 
-local function Table(t, getters, setters)
-    return setmetatable(t, {
-        __index = function(t, k)
-            return (getters[k] or rawget)(t, k)
-        end,
-        __newindex = function(t, k, v)
-            (setters[k] or rawset)(t, k, v)
-        end,
-    })
+local object_metatable = {
+    __call = function(t, getters)
+        return setmetatable(t, {
+            __index = function(t, k)
+                local getter = getters[k]
+                if getter ~= nil then
+                    return getter(t, k)
+                end
+            end,
+        })
+    end,
+}
+local function Object(t)
+    return setmetatable(t, object_metatable)
 end
 ---@param str string
 local function parse_csv(str)
@@ -128,8 +133,8 @@ local translations = parse_csv([[
 ,en,ru,pt-br,es-es,de,fr-fr,it,pl,zh-cn,jp,ko,
 iota_multiplayer.bindings_common,mp common,,,,,,,,联机常用,,,
 iota_multiplayer.bindingsdesc_common,mp common bindings.,,,,,,,,联机常用的按键绑定。,,,
-iota_multiplayer.binding_switch_player,switch player,,,,,,,,切换玩家,,,
-iota_multiplayer.bindingdesc_switch_player,switch camera&gui between players.,,,,,,,,在玩家之间切换摄像机和用户界面。,,,
+iota_multiplayer.binding_switch_camera,switch camera,,,,,,,,切换摄像机,,,
+iota_multiplayer.bindingdesc_switch_camera,switch camera&gui target between players.,,,,,,,,在玩家之间切换摄像机和图形界面目标。,,,
 iota_multiplayer.binding_toggle_teleport,toggle teleport,,,,,,,,开关传送,,,
 iota_multiplayer.bindingdesc_toggle_teleport,enable/disable auto teleport.,,,,,,,,启用/禁用自动传送。,,,
 iota_multiplayer.bindings_player,player $0,,,,,,,,玩家$0,,,
@@ -189,50 +194,50 @@ end
 local mod_id = "iota_multiplayer"
 mod_settings_version = 1
 mod_settings = {
-    Table({
+    Object{
         category_id = "share",
         settings = {
-            Table({
+            Object{
                 id = "share_money",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_share_money") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_share_money") end,
-            }),
-            Table({
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_share_money") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_share_money") end,
+                },
+            Object{
                 id = "share_temple_heart",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_share_temple_heart") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_heart") end,
-            }),
-            Table({
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_share_temple_heart") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_heart") end,
+                },
+            Object{
                 id = "share_temple_refresh",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_share_temple_refresh") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_refresh") end,
-            }),
-            Table({
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_share_temple_refresh") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_refresh") end,
+                },
+            Object{
                 id = "share_temple_perk",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_share_temple_perk") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_perk") end,
-            }),
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_share_temple_perk") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_perk") end,
+                },
         },
-    }, {
-        ui_name = function() return get_text("iota_multiplayer.setting_share") end,
-        ui_description = function() return get_text("iota_multiplayer.settingdesc_share") end,
-    }),
-    Table({
+    }{
+            ui_name = function() return get_text("iota_multiplayer.setting_share") end,
+            ui_description = function() return get_text("iota_multiplayer.settingdesc_share") end,
+        },
+    Object{
         category_id = "friendly_fire",
         settings = {
-            Table({
+            Object{
                 id = "friendly_fire_percent",
                 value_default = 0.5,
                 value_min = 0,
@@ -240,55 +245,55 @@ mod_settings = {
                 value_display_multiplier = 100,
                 value_display_formatting = " $0 %",
                 scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_percent") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_percent") end,
-            }),
-            Table({
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_percent") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_percent") end,
+                },
+            Object{
                 id = "friendly_fire_kick",
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick") end,
-            }),
-            Table({
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick") end,
+                },
+            Object{
                 id = "friendly_fire_kick_drop",
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick_drop") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick_drop") end,
-            }),
-            Table({
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick_drop") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick_drop") end,
+                },
+            Object{
                 id = "friendly_fire_force",
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_force") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_force") end,
-            }),
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_force") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_force") end,
+                },
         },
-    }, {
-        ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire") end,
-        ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire") end,
-    }),
-    Table({
+    }{
+            ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire") end,
+            ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire") end,
+        },
+    Object{
         category_id = "camera",
         settings = {
-            Table({
+            Object{
                 id = "camera_zoom_min",
                 value_default = 1,
                 value_min = 1,
                 value_display_multiplier = 100,
                 value_display_formatting = " $0 %",
                 scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom_min") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom_min") end,
-                value_max = function() return ModSettingGetNextValue("iota_multiplayer.camera_zoom_max") end,
-            }),
-            Table({
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom_min") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom_min") end,
+                    value_max = function() return ModSettingGetNextValue("iota_multiplayer.camera_zoom_max") end,
+                },
+            Object{
                 id = "camera_zoom_max",
                 value_default = 1,
                 value_min = 1,
@@ -299,23 +304,15 @@ mod_settings = {
                 change_fn = function(mod_id, gui, in_main_menu, setting, old_value, new_value)
                     ModSettingSetNextValue("iota_multiplayer.camera_zoom_min", math.min(ModSettingGetNextValue("iota_multiplayer.camera_zoom_min"), new_value), false)
                 end,
-            }, {
-                ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom_max") end,
-                ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom_max") end,
-            }),
-            Table({
-                id = "camera_unique",
-                value_default = false,
-                scope = MOD_SETTING_SCOPE_RUNTIME,
-            }, {
-                ui_name = function() return "Unique" end,
-                ui_description = function() return "Camera only follows unique player." end,
-            }),
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom_max") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom_max") end,
+                },
         },
-    }, {
-        ui_name = function() return get_text("iota_multiplayer.setting_camera") end,
-        ui_description = function() return get_text("iota_multiplayer.settingdesc_camera") end,
-    }),
+    }{
+            ui_name = function() return get_text("iota_multiplayer.setting_camera") end,
+            ui_description = function() return get_text("iota_multiplayer.settingdesc_camera") end,
+        },
 }
 
 function ModSettingsUpdate(init_scope)

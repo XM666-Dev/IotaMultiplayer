@@ -2,5 +2,5 @@
     <VariableStorageComponent
         _tags="iota_multiplayer.shared_indexs"
         value_string="{}"
-    ></VariableStorageComponent>
+    />
 </Entity>

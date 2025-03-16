@@ -1,5 +1,4 @@
 <Mod
     name="Iota Multiplayer"
     description="Noita local multiplayer mode."
-    request_no_api_restrictions="0"
 />

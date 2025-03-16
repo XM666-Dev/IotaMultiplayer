@@ -13,14 +13,9 @@ function ____cached_func()
         player_object.index = index
         player_object.controls_.polymorph_hax = true
         local ai = EntityGetFirstComponent(player, "AnimalAIComponent")
-        if ai ~= nil then
-            set_component_enabled(ai, false)
-        end
+        set_component_enabled(ai, false)
         local bound = EntityGetFirstComponent(player, "CameraBoundComponent")
-        if bound ~= nil then
-            remove_component(bound)
-        end
-        EntityAddComponent2(player, "StreamingKeepAliveComponent")
+        remove_component(bound)
     end
     player_indexs = {}
 end

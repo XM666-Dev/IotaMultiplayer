@@ -1,1 +1,3 @@
-<Entity tags="iota_multiplayer.perk_stats" serialize="1" />
+<Entity tags="iota_multiplayer.perk_stats">
+    <VariableStorageComponent _tags="iota_multiplayer.spawn_count" />
+</Entity>

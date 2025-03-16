@@ -1,4 +1,24 @@
-﻿alpha-0.9.8-20250309
+﻿beta-1.0-20250316
+-fix polymorph corpse showing
+-fix auto teleport don't work and stuck
+-add shift+t manual teleport
+-fix dead message again
+-fix dead eating
+-fix translation
+-fix resurrect fire
+-fix tinker share
+-fix chunk loading and improve performance
+-fix player lost
+-fix perk share don't work
+-add item selecting binding
+-add smooth camera switching
+-add player position indicating
+-improve mod compatibility
+-add multi quick bar
+-optimize performance
+-fix player can't pickup item
+
+alpha-0.9.8-20250309
 -fix pickup flickering
 -fix corpse sharing inventory controls
 -fix corpse sharing crash

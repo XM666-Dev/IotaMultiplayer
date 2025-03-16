@@ -8,9 +8,9 @@ mneedata.iota_multiplayer = {
 bindings.iota_multiplayer = {
     switch_player = {
         order_id = "a",
-        name = "$iota_multiplayer.binding_switch_player",
-        desc = "$iota_multiplayer.bindingdesc_switch_player",
-        keys = {["g"] = 1},
+        name = "$iota_multiplayer.binding_switch_camera",
+        desc = "$iota_multiplayer.bindingdesc_switch_camera",
+        keys = {["c"] = 1},
     },
     toggle_teleport = {
         order_id = "b",
@@ -151,6 +151,54 @@ for i = 1, MAX_PLAYER_NUM do
             name = "$controls_itemprev",
             desc = function() return get_player_bindingdesc("$controls_itemprev") end,
             keys = {[jpad and jpad .. "gpd_l1" or "mouse_wheel_up"] = 1},
+        },
+        itemslot1 = {
+            order_id = next_order(),
+            name = "$controls_itemslot1",
+            desc = function() return get_player_bindingdesc("$controls_itemslot1") end,
+            keys = {[jpad and "_" or "1"] = 1},
+        },
+        itemslot2 = {
+            order_id = next_order(),
+            name = "$controls_itemslot2",
+            desc = function() return get_player_bindingdesc("$controls_itemslot2") end,
+            keys = {[jpad and "_" or "2"] = 1},
+        },
+        itemslot3 = {
+            order_id = next_order(),
+            name = "$controls_itemslot3",
+            desc = function() return get_player_bindingdesc("$controls_itemslot3") end,
+            keys = {[jpad and "_" or "3"] = 1},
+        },
+        itemslot4 = {
+            order_id = next_order(),
+            name = "$controls_itemslot4",
+            desc = function() return get_player_bindingdesc("$controls_itemslot4") end,
+            keys = {[jpad and "_" or "4"] = 1},
+        },
+        itemslot5 = {
+            order_id = next_order(),
+            name = "$controls_itemslot5",
+            desc = function() return get_player_bindingdesc("$controls_itemslot5") end,
+            keys = {[jpad and "_" or "5"] = 1},
+        },
+        itemslot6 = {
+            order_id = next_order(),
+            name = "$controls_itemslot6",
+            desc = function() return get_player_bindingdesc("$controls_itemslot6") end,
+            keys = {[jpad and "_" or "6"] = 1},
+        },
+        itemslot7 = {
+            order_id = next_order(),
+            name = "$controls_itemslot7",
+            desc = function() return get_player_bindingdesc("$controls_itemslot7") end,
+            keys = {[jpad and "_" or "7"] = 1},
+        },
+        itemslot8 = {
+            order_id = next_order(),
+            name = "$controls_itemslot8",
+            desc = function() return get_player_bindingdesc("$controls_itemslot8") end,
+            keys = {[jpad and "_" or "8"] = 1},
         },
     }
 end

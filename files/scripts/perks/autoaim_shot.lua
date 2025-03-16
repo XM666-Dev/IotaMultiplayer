@@ -45,8 +45,8 @@ function shot(projectile)
     end)
     if enemy == nil then return end
 
-    ComponentSetValue2(projectile_component, "lob_min", 1)
-    ComponentSetValue2(projectile_component, "lob_max", 1)
+    ComponentSetValue2(projectile_component, "lob_min", math.max(ComponentGetValue2(projectile_component, "lob_min"), 1))
+    ComponentSetValue2(projectile_component, "lob_max", math.max(ComponentGetValue2(projectile_component, "lob_max"), 1))
     local enemy_x, enemy_y = EntityGetFirstHitboxCenter(enemy)
     GameShootProjectile(0, projectile_x, projectile_y, enemy_x, enemy_y, projectile, false)
 end

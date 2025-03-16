@@ -5,15 +5,13 @@ MAX_PLAYER_NUM = 8
 
 mod = Entity{
     id = {get = GameGetWorldStateEntity},
-    gui_enabled_index = VariableField("iota_multiplayer.gui_enabled_index", "value_int"),
     gui_owner_index = CombinedField(NumericField(FileField("mods/iota_multiplayer/files/gui_owner_index.txt")), function(v)
         if v ~= nil then return v end
-        return mod.gui_enabled_index
+        return Player(get_player_gui_enabled()).index
     end),
     camera_center_index = VariableField("iota_multiplayer.camera_center_index", "value_int"),
     money = VariableField("iota_multiplayer.money", "value_int"),
-    player_positions = SerializedField(VariableField("iota_multiplayer.player_positions", "value_string", "{}")),
-    auto_teleport = VariableField("iota_multiplayer.auto_teleport", "value_bool"),
+    auto_teleport = VariableField("iota_multiplayer.auto_teleport", "value_bool", true),
 } ()
 
 Player = Entity{
@@ -23,24 +21,25 @@ Player = Entity{
     gui = ComponentField("InventoryGuiComponent"),
     wallet = ComponentField("WalletComponent"),
     pickupper = ComponentField("ItemPickUpperComponent"),
+    hitbox = ComponentField("HitboxComponent", EntityGetFirstComponent),
     damage_model = ComponentField("DamageModelComponent"),
     genome = ComponentField("GenomeDataComponent"),
-    alive = ComponentField("StreamingKeepAliveComponent"),
+    ingestion = ComponentField("IngestionComponent"),
+    alive = ComponentField("StreamingKeepAliveComponent", EntityGetFirstComponent),
     log = ComponentField("GameLogComponent"),
     sprite = ComponentField("SpriteComponent", "character"),
     aiming_reticle = ComponentField("SpriteComponent", "aiming_reticle"),
     character_data = ComponentField("CharacterDataComponent"),
+    collision = ComponentField("PlayerCollisionComponent"),
     inventory = ComponentField("Inventory2Component"),
     autoaim = ComponentField{"LuaComponent", "iota_multiplayer.autoaim", _tags = "iota_multiplayer.autoaim", _enabled = false, script_shot = "mods/iota_multiplayer/files/scripts/perks/autoaim_shot.lua"},
     index = VariableField("iota_multiplayer.index", "value_int"),
-    previous_aim_x = VariableField("iota_multiplayer.previous_aim_x", "value_string"),
-    previous_aim_y = VariableField("iota_multiplayer.previous_aim_y", "value_string"),
-    dead = VariableField("iota_multiplayer.dead", "value_bool"),
     previous_money = VariableField("iota_multiplayer.previous_money", "value_int"),
     damage_frame = VariableField("iota_multiplayer.damage_frame", "value_int"),
     damage_message = VariableField("iota_multiplayer.damage_message", "value_string"),
-    damage_entity_thats_responsible = VariableField("iota_multiplayer.damage_entity_thats_responsible", "value_int"),
+    damage_responsible = VariableField("iota_multiplayer.damage_responsible", "value_string"),
     load_frame = VariableField("iota_multiplayer.load_frame", "value_int"),
+    ingestion_data = VariableField("iota_multiplayer.ingestion_data", "value_string"),
 }
 function Player:add()
     if EntityHasTag(self.id, "iota_multiplayer.player") then
@@ -62,7 +61,7 @@ end
 
 function Player:is_inventory_open()
     if self.index == mod.gui_owner_index then
-        self = Player(get_player_at_index_including_disabled(mod.gui_enabled_index))
+        self = Player(get_player_gui_enabled())
     end
     return self.controls_.mButtonFrameInventory == get_frame_num_next() ~= (self.gui_.mActive or false) and not InputIsKeyJustDown(Key_ESCAPE)
 end
@@ -90,16 +89,29 @@ function Player:get_camera_pos()
     return EntityGetTransform(self.id)
 end
 
+function Player:get_edit_count()
+    local edit_count = GameGetGameEffectCount(self.id, "EDIT_WANDS_EVERYWHERE") - GameGetGameEffectCount(self.id, "NO_WAND_EDITING")
+    local this_x, this_y = EntityGetTransform(self.id)
+    for i, workshop in ipairs(EntityGetWithTag("workshop")) do
+        local workshop_hitbox = EntityGetFirstComponent(workshop, "HitboxComponent")
+        if workshop_hitbox ~= nil and self.hitbox ~= nil then
+            local workshop_x, workshop_y = EntityGetTransform(workshop)
+            local left = workshop_x + ComponentGetValue2(workshop_hitbox, "aabb_min_x") - self.hitbox.aabb_max_x
+            local right = workshop_x + ComponentGetValue2(workshop_hitbox, "aabb_max_x") - self.hitbox.aabb_min_x
+            local up = workshop_y + ComponentGetValue2(workshop_hitbox, "aabb_min_y") - self.hitbox.aabb_max_y
+            local down = workshop_y + ComponentGetValue2(workshop_hitbox, "aabb_max_y") - self.hitbox.aabb_min_y
+            if this_x >= left and this_x <= right and this_y >= up and this_y <= down then
+                edit_count = edit_count + 1
+                break
+            end
+        end
+    end
+    return edit_count
+end
+
 function Player:set_dead(dead)
-    if self.damage_model ~= nil then
-        set_component_enabled(self.damage_model._id, not dead)
-    end
-    if self.genome ~= nil then
-        set_component_enabled(self.genome._id, not dead)
-    end
-    if self.alive ~= nil then
-        --set_component_enabled(self.alive._id, not dead)
-    end
+    self.damage_model_._enabled = not dead
+    self.genome_._enabled = not dead
     local polymorph
     local children = get_children(self.id)
     for i, child in ipairs(children) do
@@ -108,11 +120,10 @@ function Player:set_dead(dead)
             polymorph = effect
         end
     end
-    if polymorph ~= nil then
-        set_component_enabled(polymorph, not dead)
-    end
+    set_component_enabled(polymorph, not dead)
     if dead then
-        --EntityAddChild(GameGetPlayerStatsEntity(0), self.id)
+        self.ingestion_data = serialize(self.ingestion_._members):gsub('"', "'")
+        remove_component(self.ingestion_._id)
 
         EntityRemoveTag(self.id, "hittable")
 
@@ -125,9 +136,11 @@ function Player:set_dead(dead)
             if polymorph ~= nil then
                 ComponentSetValue2(sprite, "alpha", 0.25)
             end
-            EntityRefreshSprite(self.id, sprite)
+            refresh_sprite(sprite)
         end
         GamePrintImportant("$log_coop_partner_is_dead")
+
+        self.character_data_.buoyancy_check_offset_y = 3
 
         if self.controls ~= nil then
             local controls_component = self.controls._id
@@ -153,16 +166,20 @@ function Player:set_dead(dead)
             end
         end
     else
-        --EntityRemoveFromParent(self.id)
+        local ingestion_data = deserialize(self.ingestion_data)
+        if ingestion_data ~= nil then
+            local ingestion = EntityAddComponent2(self.id, "IngestionComponent")
+            for k, v in pairs(ingestion_data) do
+                ComponentSetValue(ingestion, k, v)
+            end
+        end
 
         EntityAddTag(self.id, "hittable")
 
         local protection_polymorph_entity = get_children(self.id, "iota_multiplayer.protection_polymorph")[1]
-        if protection_polymorph_entity ~= nil then
-            local protection_polymorph = EntityGetFirstComponent(protection_polymorph_entity, "GameEffectComponent")
-            if protection_polymorph ~= nil then
-                ComponentSetValue2(protection_polymorph, "frames", 0)
-            end
+        local protection_polymorph = EntityGetFirstComponent(protection_polymorph_entity, "GameEffectComponent")
+        if protection_polymorph ~= nil then
+            ComponentSetValue2(protection_polymorph, "frames", 0)
         end
 
         GamePlayAnimation(self.id, "intro_stand_up", 0x7FFFFFFF)
@@ -174,12 +191,13 @@ function Player:set_dead(dead)
         end
         GamePrintImportant(GameTextGet("$log_coop_resurrected_player", self.index))
 
-        self.damage_model_.hp = 0.04
-        self.damage_model_.is_on_fire = false
-        local protection_all = GetGameEffectLoadTo(self.id, "PROTECTION_ALL", true)
-        ComponentSetValue2(protection_all, "frames", 60)
+        self.character_data_.buoyancy_check_offset_y = -7
+
+        local fire = get_game_effect(self.id, "ON_FIRE")
+        self.damage_model_.hp = math.max(self.damage_model_.hp or 0, 0.04)
+        self.damage_model_.invincibility_frames = (self.damage_model_.invincibility_frames or 0) + 60
+        self.damage_model_.mFireFramesLeft = math.min(self.damage_model_.mFireFramesLeft or 0, fire and ComponentGetValue2(fire, "frames") or 0, 60)
     end
-    self.dead = dead
 end
 
 function load_player(x, y)
@@ -198,7 +216,7 @@ end
 function get_players()
     return table.filter(EntityGetWithTag("iota_multiplayer.player"), function(player)
         local player_object = Player(player)
-        return not player_object.dead
+        return player_object.damage_model_._enabled
     end)
 end
 
@@ -214,7 +232,15 @@ function get_player_at_index(index)
     local players = EntityGetWithTag("iota_multiplayer.player")
     return table.find(players, function(player)
         local player_object = Player(player)
-        return player_object.index == index and not player_object.dead
+        return player_object.index == index and player_object.damage_model_._enabled
+    end)
+end
+
+function get_player_gui_enabled()
+    local players = EntityGetWithTag("iota_multiplayer.player")
+    return table.find(players, function(player)
+        local player_object = Player(player)
+        return player_object.gui ~= nil and ComponentGetIsEnabled(player_object.gui._id)
     end)
 end
 
