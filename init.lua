@@ -126,7 +126,7 @@ function OnPlayerSpawned(player)
 end
 
 local function add_script_throw(item)
-    if EntityGetComponent(item, "LuaComponent", "iota_multiplayer.item_throw") == nil then
+    if EntityGetComponentIncludingDisabled(item, "ItemComponent") ~= nil and EntityGetComponentIncludingDisabled(item, "LuaComponent", "iota_multiplayer.item_throw") == nil then
         EntityAddComponent2(item, "LuaComponent", {
             _tags = "enabled_in_world,enabled_in_hand,enabled_in_inventory,iota_multiplayer.item_throw",
             script_source_file = "mods/iota_multiplayer/files/scripts/items/item_throw.lua",
@@ -220,7 +220,7 @@ local function update_common()
             if player_object.damage_responsible ~= "" then
                 damage_message = GameTextGet("$menugameover_causeofdeath_killer_cause", GameTextGetTranslatedOrNot(player_object.damage_responsible), GameTextGetTranslatedOrNot(damage_message))
             end
-            EntityInflictDamage(player, 0.04, "", damage_message, "NO_RAGDOLL_FILE", 0, 0)
+            EntityInflictDamage(player, 0.04, "NONE", damage_message, "NO_RAGDOLL_FILE", 0, 0)
             player_object.damage_model_.kill_now = true
             player_object.damage_model_.wait_for_kill_flag_on_death = true
             player_object.damage_model_.ragdoll_fx_forced = "NO_RAGDOLL_FILE"

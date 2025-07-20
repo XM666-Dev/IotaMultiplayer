@@ -4,7 +4,6 @@ dofile_once("mods/mnee/lib.lua")
 MAX_PLAYER_NUM = 8
 
 mod = Entity{
-    id = {get = GameGetWorldStateEntity},
     gui_owner_index = CombinedField(NumericField(FileField("mods/iota_multiplayer/files/gui_owner_index.txt")), function(v)
         if v ~= nil then return v end
         return Player(get_player_gui_enabled()).index
@@ -12,7 +11,7 @@ mod = Entity{
     camera_center_index = VariableField("iota_multiplayer.camera_center_index", "value_int"),
     money = VariableField("iota_multiplayer.money", "value_int"),
     auto_teleport = VariableField("iota_multiplayer.auto_teleport", "value_bool", true),
-} ()
+} (1)
 
 Player = Entity{
     controls = ComponentField("ControlsComponent"),
