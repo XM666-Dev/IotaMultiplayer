@@ -238,7 +238,7 @@ local function update_camera()
     local camera_center_player = get_player_at_index(mod.camera_center_index)
     local camera_center_player_object = Player(camera_center_player)
     local players = get_players()
-    if mnee.mnin_bind("iota_multiplayer", "switch_player", true, true) or camera_center_player == nil then
+    if mnee.mnin_bind("iota_multiplayer", "switch_player", true) or camera_center_player == nil then
         local entities = camera_center_player ~= nil and table.filter(players, function(v)
             return Player(v).index > camera_center_player_object.index
         end) or {}
@@ -262,7 +262,7 @@ local function update_camera()
 
     camera_center_player = get_player_at_index(mod.camera_center_index)
     camera_center_player_object = Player(camera_center_player)
-    if mnee.mnin_bind("iota_multiplayer", "toggle_teleport", true, true) then
+    if mnee.mnin_bind("iota_multiplayer", "toggle_teleport", true) then
         if mnee.mnin_key("left_shift") then
             for i, player in ipairs(players) do
                 local player_object = Player(player)
@@ -366,8 +366,8 @@ local function update_controls()
             goto continue
         end
 
-        player_object.controls.mButtonDownFire = player_object:mnin_bind("usewand", true, false, false, false, "guied")
-        if player_object:mnin_bind("usewand", true, true, false, false, "guied") then
+        player_object.controls.mButtonDownFire = player_object:mnin_bind("usewand", false, false, "guied")
+        if player_object:mnin_bind("usewand", true, false, "guied") then
             player_object.controls.mButtonFrameFire = get_frame_num_next()
         end
         if player_object.controls.mButtonDownFire then
@@ -387,82 +387,84 @@ local function update_controls()
             player_object.controls.polymorph_next_attack_frame = get_frame_num_next() + attack_info.frames_between
         end
 
-        player_object.controls.mButtonDownFire2 = player_object:mnin_bind("sprayflask", true, false, false, false, "guied")
-        if player_object:mnin_bind("sprayflask", true, true, false, false, "guied") then
+        player_object.controls.mButtonDownFire2 = player_object:mnin_bind("sprayflask", false, false, "guied")
+        if player_object:mnin_bind("sprayflask", true, false, "guied") then
             player_object.controls.mButtonFrameFire2 = get_frame_num_next()
         end
 
-        local throw, throw_unbound, throw_jpad = player_object:mnin_bind("throw", true, false, false, false, "guied")
+        local throw, throw_unbound, throw_jpad = player_object:mnin_bind("throw", false, false, "guied")
         player_object.controls.mButtonDownThrow = throw and not (throw_jpad and player_object:is_inventory_open())
-        if player_object:mnin_bind("throw", true, true, false, false, "guied") and player_object.controls.mButtonDownThrow then
+        if player_object:mnin_bind("throw", true, false, "guied") and player_object.controls.mButtonDownThrow then
             player_object.controls.mButtonFrameThrow = get_frame_num_next()
         end
 
-        local interact, interact_unbound, interact_jpad = player_object:mnin_bind("interact", true)
+        local interact, interact_unbound, interact_jpad = player_object:mnin_bind("interact")
         interact = interact and not (interact_jpad and player_object:is_inventory_open())
         if interact and not player_object.controls.mButtonDownInteract then
             player_object.controls.mButtonFrameInteract = get_frame_num_next()
         end
         player_object.controls.mButtonDownInteract = interact
 
-        local left, left_unbound, left_jpad = player_object:mnin_bind("left", true)
+        local left, left_unbound, left_jpad = player_object:mnin_bind("left")
         player_object.controls.mButtonDownLeft = left and not (left_jpad and player_object:is_inventory_open())
-        if player_object:mnin_bind("left", true, true) and player_object.controls.mButtonDownLeft then
+        if player_object:mnin_bind("left", true) and player_object.controls.mButtonDownLeft then
             player_object.controls.mButtonFrameLeft = get_frame_num_next()
         end
 
-        local right, right_unbound, right_jpad = player_object:mnin_bind("right", true)
+        local right, right_unbound, right_jpad = player_object:mnin_bind("right")
         player_object.controls.mButtonDownRight = right and not (right_jpad and player_object:is_inventory_open())
-        if player_object:mnin_bind("right", true, true) and player_object.controls.mButtonDownRight then
+        if player_object:mnin_bind("right", true) and player_object.controls.mButtonDownRight then
             player_object.controls.mButtonFrameRight = get_frame_num_next()
         end
 
-        local up, up_unbound, up_jpad = player_object:mnin_bind("up", true)
+        local up, up_unbound, up_jpad = player_object:mnin_bind("up")
         player_object.controls.mButtonDownUp = up and not (up_jpad and player_object:is_inventory_open())
-        if player_object:mnin_bind("up", true, true) and player_object.controls.mButtonDownUp then
+        if player_object:mnin_bind("up", true) and player_object.controls.mButtonDownUp then
             player_object.controls.mButtonFrameUp = get_frame_num_next()
         end
 
-        local down, down_unbound, down_jpad = player_object:mnin_bind("down", true)
+        local down, down_unbound, down_jpad = player_object:mnin_bind("down")
         player_object.controls.mButtonDownDown = down and not (down_jpad and player_object:is_inventory_open())
-        if player_object:mnin_bind("down", true, true) and player_object.controls.mButtonDownDown then
+        if player_object:mnin_bind("down", true) and player_object.controls.mButtonDownDown then
             player_object.controls.mButtonFrameDown = get_frame_num_next()
         end
 
-        player_object.controls.mButtonDownFly = player_object:mnin_bind("up", true)
-        if player_object:mnin_bind("up", true, true) then
+        player_object.controls.mButtonDownFly = player_object:mnin_bind("up")
+        if player_object:mnin_bind("up", true) then
             player_object.controls.mButtonFrameFly = get_frame_num_next()
         end
 
-        player_object.controls.mButtonDownChangeItemR = player_object:mnin_bind("itemnext", true) and ModTextFileGetContent("mods/spell_lab_shugged/scroll_box_hovered.txt") ~= "true"
-        if player_object:mnin_bind("itemnext", true, true) and player_object.controls.mButtonDownChangeItemR then
+        local unscroll = ModTextFileGetContent("mods/spell_lab_shugged/scroll_box_hovered.txt") == "true"
+			or tonumber( GlobalsGetValue( pen.GLOBAL_UNSCROLLER_SAFETY, "0" )) == GameGetFrameNum()
+        player_object.controls.mButtonDownChangeItemR = player_object:mnin_bind("itemnext") and not(unscroll)
+        if player_object:mnin_bind("itemnext", true) and player_object.controls.mButtonDownChangeItemR then
             player_object.controls.mButtonFrameChangeItemR = get_frame_num_next()
             player_object.controls.mButtonCountChangeItemR = 1
         else
             player_object.controls.mButtonCountChangeItemR = 0
         end
 
-        player_object.controls.mButtonDownChangeItemL = player_object:mnin_bind("itemprev", true) and ModTextFileGetContent("mods/spell_lab_shugged/scroll_box_hovered.txt") ~= "true"
-        if player_object:mnin_bind("itemprev", true, true) and player_object.controls.mButtonDownChangeItemL then
+        player_object.controls.mButtonDownChangeItemL = player_object:mnin_bind("itemprev") and not(unscroll)
+        if player_object:mnin_bind("itemprev", true) and player_object.controls.mButtonDownChangeItemL then
             player_object.controls.mButtonFrameChangeItemL = get_frame_num_next()
             player_object.controls.mButtonCountChangeItemL = 1
         else
             player_object.controls.mButtonCountChangeItemL = 0
         end
 
-        player_object.controls.mButtonDownInventory = player_object:mnin_bind("inventory", true)
-        if player_object:mnin_bind("inventory", true, true) then
+        player_object.controls.mButtonDownInventory = player_object:mnin_bind("inventory")
+        if player_object:mnin_bind("inventory", true) then
             player_object.controls.mButtonFrameInventory = get_frame_num_next()
         end
 
-        player_object.controls.mButtonDownDropItem = player_object:mnin_bind("dropitem", true) and player_object:is_inventory_open()
-        if player_object:mnin_bind("dropitem", true, true) and player_object.controls.mButtonDownDropItem then
+        player_object.controls.mButtonDownDropItem = player_object:mnin_bind("dropitem") and player_object:is_inventory_open()
+        if player_object:mnin_bind("dropitem", true) and player_object.controls.mButtonDownDropItem then
             player_object.controls.mButtonFrameDropItem = get_frame_num_next()
         end
 
-        local kick, kick_unbound, kick_jpad = player_object:mnin_bind("kick", true)
+        local kick, kick_unbound, kick_jpad = player_object:mnin_bind("kick")
         player_object.controls.mButtonDownKick = kick and not (kick_jpad and player_object:is_inventory_open())
-        if player_object:mnin_bind("kick", true, true) and player_object.controls.mButtonDownKick then
+        if player_object:mnin_bind("kick", true) and player_object.controls.mButtonDownKick then
             player_object.controls.mButtonFrameKick = get_frame_num_next()
         end
 
@@ -639,7 +641,7 @@ local function update_pickup()
             local dead_players = table.filter(players_including_disabled, function(v) return not Player(v).damage_model_._enabled end)
             for i, dead_player in ipairs(dead_players) do
                 local dead_player_object = Player(dead_player)
-                if dead_player_object:mnin_bind("interact", true, true) and not table.find(shared_indexs, dead_player_object.index) then
+                if dead_player_object:mnin_bind("interact", true) and not table.find(shared_indexs, dead_player_object.index) then
                     table.insert(shared_indexs, dead_player_object.index)
                     coop_respawn_object.shared_indexs = shared_indexs
 
@@ -743,7 +745,7 @@ local function update_gui()
     for i, player in ipairs(players) do
         local player_object = Player(player)
         for i = 1, 8 do
-            if player_object:mnin_bind("itemslot" .. i, true, true) then
+            if player_object:mnin_bind("itemslot" .. i, true) then
                 local quick_inventory = table.find(get_children(player), function(v) return EntityGetName(v) == "inventory_quick" end)
                 local items = get_children(quick_inventory)
                 local slots = {}
