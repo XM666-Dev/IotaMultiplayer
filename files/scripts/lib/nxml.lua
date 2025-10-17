@@ -1,1 +1,1 @@
-../../../../universal/nxml.lua
+C:/Program Files (x86)/Steam/steamapps/common/Noita/mods/sul/files/nxml.lua

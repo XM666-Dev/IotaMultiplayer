@@ -1,1 +1,1 @@
-D:/Program Files (x86)/Steam/steamapps/common/Noita/mods/sul/files/tactic.lua
+C:/Program Files (x86)/Steam/steamapps/common/Noita/mods/sul/files/tactic.lua
