@@ -435,8 +435,8 @@ local function update_controls()
         end
 
         local unscroll = ModTextFileGetContent("mods/spell_lab_shugged/scroll_box_hovered.txt") == "true"
-			or tonumber( GlobalsGetValue( pen.GLOBAL_UNSCROLLER_SAFETY, "0" )) == GameGetFrameNum()
-        player_object.controls.mButtonDownChangeItemR = player_object:mnin_bind("itemnext") and not(unscroll)
+            or tonumber(GlobalsGetValue(pen.GLOBAL_UNSCROLLER_SAFETY, "0")) == GameGetFrameNum()
+        player_object.controls.mButtonDownChangeItemR = player_object:mnin_bind("itemnext") and not (unscroll)
         if player_object:mnin_bind("itemnext", true) and player_object.controls.mButtonDownChangeItemR then
             player_object.controls.mButtonFrameChangeItemR = get_frame_num_next()
             player_object.controls.mButtonCountChangeItemR = 1
@@ -444,7 +444,7 @@ local function update_controls()
             player_object.controls.mButtonCountChangeItemR = 0
         end
 
-        player_object.controls.mButtonDownChangeItemL = player_object:mnin_bind("itemprev") and not(unscroll)
+        player_object.controls.mButtonDownChangeItemL = player_object:mnin_bind("itemprev") and not (unscroll)
         if player_object:mnin_bind("itemprev", true) and player_object.controls.mButtonDownChangeItemL then
             player_object.controls.mButtonFrameChangeItemL = get_frame_num_next()
             player_object.controls.mButtonCountChangeItemL = 1
@@ -894,95 +894,97 @@ local function update_window()
         end
     end
 
-    local x, y = tonumber(MagicNumbersGetValue("UI_BARS_POS_X")) - 1, tonumber(MagicNumbersGetValue("UI_BARS_POS_Y"))
-    local box_width, box_height = GuiGetImageDimensions(gui, "data/ui_gfx/inventory/quick_inventory_box.png")
-    GuiImage(gui, 1, 0, 0, "data/ui_gfx/inventory/highlight.xml")
-    local highlight_width, highlight_height = select(6, GuiGetPreviousWidgetInfo(gui))
-    local gui_enabled_player = get_player_gui_enabled()
-    table.sort(players, function(a, b)
-        local a_object = Player(a)
-        local b_object = Player(b)
-        return a_object.index < b_object.index or a == gui_enabled_player
-    end)
-    for i, player in ipairs(players) do
-        if player == gui_enabled_player or not GameIsInventoryOpen() then
-            local text = "P" .. Player(player).index
-            local x, y = x - box_width * 0.5, y + box_height * 0.5
-            y = y - select(2, GuiGetTextDimensions(gui, text)) * 0.5
-            widget_list_insert(widget_list, function(gui, x, y)
-                GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
-                GuiText(gui, x, y, text)
-            end, x, y)
-        end
-        if player ~= gui_enabled_player and not GameIsInventoryOpen() then
-            local player_object = Player(player)
-            local quick_inventory = table.find(get_children(player), function(v) return EntityGetName(v) == "inventory_quick" end)
-            local items = get_children(quick_inventory)
-            local slots = {}
-            for i, item in ipairs(items) do
-                local slot = get_quick_slot(item)
-                for k, v in pairs(slots) do
-                    if v == slot then
-                        slot = slot + 1
-                    end
-                end
-                slots[item] = slot
+    if not ModSettingGet("iota_multiplayer.multibar_disabled") then
+        local x, y = tonumber(MagicNumbersGetValue("UI_BARS_POS_X")) - 1, tonumber(MagicNumbersGetValue("UI_BARS_POS_Y"))
+        local box_width, box_height = GuiGetImageDimensions(gui, "data/ui_gfx/inventory/quick_inventory_box.png")
+        GuiImage(gui, 1, 0, 0, "data/ui_gfx/inventory/highlight.xml")
+        local highlight_width, highlight_height = select(6, GuiGetPreviousWidgetInfo(gui))
+        local gui_enabled_player = get_player_gui_enabled()
+        table.sort(players, function(a, b)
+            local a_object = Player(a)
+            local b_object = Player(b)
+            return a_object.index < b_object.index or a == gui_enabled_player
+        end)
+        for i, player in ipairs(players) do
+            if player == gui_enabled_player or not GameIsInventoryOpen() then
+                local text = "P" .. Player(player).index
+                local x, y = x - box_width * 0.5, y + box_height * 0.5
+                y = y - select(2, GuiGetTextDimensions(gui, text)) * 0.5
+                widget_list_insert(widget_list, function(gui, x, y)
+                    GuiOptionsAddForNextWidget(gui, GUI_OPTION.Align_HorizontalCenter)
+                    GuiText(gui, x, y, text)
+                end, x, y)
             end
-            do
-                local x = x
-                for i = 0, 7 do
-                    widget_list_insert(widget_list, function(gui, x, y)
-                        GuiOptionsAddForNextWidget(gui, GUI_OPTION.NonInteractive)
-                        GuiImage(gui, widget_list_id(widget_list, function() end), x, y, "data/ui_gfx/inventory/quick_inventory_box.png", 1, 1)
-                    end, x, y)
-                    if i == slots[player_object.inventory_.mActiveItem] then
-                        local x, y = x + (highlight_width + 1) * 0.5, y + (highlight_height + 1) * 0.5
+            if player ~= gui_enabled_player and not GameIsInventoryOpen() then
+                local player_object = Player(player)
+                local quick_inventory = table.find(get_children(player), function(v) return EntityGetName(v) == "inventory_quick" end)
+                local items = get_children(quick_inventory)
+                local slots = {}
+                for i, item in ipairs(items) do
+                    local slot = get_quick_slot(item)
+                    for k, v in pairs(slots) do
+                        if v == slot then
+                            slot = slot + 1
+                        end
+                    end
+                    slots[item] = slot
+                end
+                do
+                    local x = x
+                    for i = 0, 7 do
                         widget_list_insert(widget_list, function(gui, x, y)
                             GuiOptionsAddForNextWidget(gui, GUI_OPTION.NonInteractive)
-                            GuiImage(gui, widget_list_id(widget_list, function() end), x, y, "data/ui_gfx/inventory/highlight.xml", 1, 1, 0, 0, GUI_RECT_ANIMATION_PLAYBACK.Loop)
+                            GuiImage(gui, widget_list_id(widget_list, function() end), x, y, "data/ui_gfx/inventory/quick_inventory_box.png", 1, 1)
                         end, x, y)
+                        if i == slots[player_object.inventory_.mActiveItem] then
+                            local x, y = x + (highlight_width + 1) * 0.5, y + (highlight_height + 1) * 0.5
+                            widget_list_insert(widget_list, function(gui, x, y)
+                                GuiOptionsAddForNextWidget(gui, GUI_OPTION.NonInteractive)
+                                GuiImage(gui, widget_list_id(widget_list, function() end), x, y, "data/ui_gfx/inventory/highlight.xml", 1, 1, 0, 0, GUI_RECT_ANIMATION_PLAYBACK.Loop)
+                            end, x, y)
+                        end
+                        x = x + box_width
+                        if i == 3 then
+                            x = x + 1
+                        end
                     end
-                    x = x + box_width
-                    if i == 3 then
+                end
+                for i, item in ipairs(items) do
+                    local slot = slots[item]
+                    local x, y = x + slot * box_width, y
+                    x, y = vec_add(x, y, vec_mult(box_width, box_height, 0.5))
+                    if slot > 3 then
                         x = x + 1
                     end
-                end
-            end
-            for i, item in ipairs(items) do
-                local slot = slots[item]
-                local x, y = x + slot * box_width, y
-                x, y = vec_add(x, y, vec_mult(box_width, box_height, 0.5))
-                if slot > 3 then
-                    x = x + 1
-                end
-                local item_component = EntityGetFirstComponentIncludingDisabled(item, "ItemComponent")
-                local ability_component = EntityGetFirstComponentIncludingDisabled(item, "AbilityComponent")
-                local sprite_filename = item_component and ComponentGetValue2(item_component, "ui_sprite") or ""
-                if sprite_filename == "" and ability_component ~= nil then
-                    sprite_filename = ComponentGetValue2(ability_component, "sprite_file")
-                end
-                if sprite_filename ~= "" then
-                    if not sprite_filename:find(".xml$") then
-                        local width, height = GuiGetImageDimensions(gui, sprite_filename)
-                        x, y = vec_sub(x, y, vec_mult(width, height, 0.5))
+                    local item_component = EntityGetFirstComponentIncludingDisabled(item, "ItemComponent")
+                    local ability_component = EntityGetFirstComponentIncludingDisabled(item, "AbilityComponent")
+                    local sprite_filename = item_component and ComponentGetValue2(item_component, "ui_sprite") or ""
+                    if sprite_filename == "" and ability_component ~= nil then
+                        sprite_filename = ComponentGetValue2(ability_component, "sprite_file")
                     end
-                    widget_list_insert(widget_list, function(gui, x, y)
-                        GuiOptionsAddForNextWidget(gui, GUI_OPTION.NonInteractive)
-                        local material_inventory = EntityGetFirstComponentIncludingDisabled(item, "MaterialInventoryComponent")
-                        if material_inventory ~= nil then
-                            local color = GameGetPotionColorUint(item)
-                            local red = bit.band(color, 0xFF) / 0xFF
-                            local green = bit.band(bit.rshift(color, 8), 0xFF) / 0xFF
-                            local blue = bit.band(bit.rshift(color, 16), 0xFF) / 0xFF
-                            local alpha = bit.rshift(color, 24) / 0xFF
-                            GuiColorSetForNextWidget(gui, red, green, blue, alpha)
+                    if sprite_filename ~= "" then
+                        if not sprite_filename:find(".xml$") then
+                            local width, height = GuiGetImageDimensions(gui, sprite_filename)
+                            x, y = vec_sub(x, y, vec_mult(width, height, 0.5))
                         end
-                        GuiImage(gui, widget_list_id(widget_list, function() end), x, y, sprite_filename, 1, 1, 0, 0, GUI_RECT_ANIMATION_PLAYBACK.Loop)
-                    end, x, y)
+                        widget_list_insert(widget_list, function(gui, x, y)
+                            GuiOptionsAddForNextWidget(gui, GUI_OPTION.NonInteractive)
+                            local material_inventory = EntityGetFirstComponentIncludingDisabled(item, "MaterialInventoryComponent")
+                            if material_inventory ~= nil then
+                                local color = GameGetPotionColorUint(item)
+                                local red = bit.band(color, 0xFF) / 0xFF
+                                local green = bit.band(bit.rshift(color, 8), 0xFF) / 0xFF
+                                local blue = bit.band(bit.rshift(color, 16), 0xFF) / 0xFF
+                                local alpha = bit.rshift(color, 24) / 0xFF
+                                GuiColorSetForNextWidget(gui, red, green, blue, alpha)
+                            end
+                            GuiImage(gui, widget_list_id(widget_list, function() end), x, y, sprite_filename, 1, 1, 0, 0, GUI_RECT_ANIMATION_PLAYBACK.Loop)
+                        end, x, y)
+                    end
                 end
             end
+            y = y + 24
         end
-        y = y + 24
     end
 
     local picked = false

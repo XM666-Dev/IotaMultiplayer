@@ -313,6 +313,15 @@ mod_settings = {
             ui_name = function() return get_text("iota_multiplayer.setting_camera") end,
             ui_description = function() return get_text("iota_multiplayer.settingdesc_camera") end,
         },
+    Object{
+        id = "multibar_disabled",
+        value_default = false,
+        scope = MOD_SETTING_SCOPE_RUNTIME,
+
+    }{
+            ui_name = function() return "Multibar disabled" end,
+            ui_description = function() return "Disables player multi inventory bar drawing." end,
+        },
 }
 
 function ModSettingsUpdate(init_scope)
