@@ -88,7 +88,7 @@ function get_pos_on_screen(x, y, gui)
         gui = raw_gui
     end
     local camera_x, camera_y = GameGetCameraPos()
-    local bounds_x, bounds_y, bounds_width, bounds_height = GameGetCameraBounds()
+    local bounds_width, bounds_height = select(2, GameGetCameraBounds())
     local resolution_width, resolution_height = get_resolution(gui)
     local screen_width, screen_height = GuiGetScreenDimensions(gui)
     return (x - camera_x + bounds_width * 0.5 + tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_X"))) / resolution_width * screen_width,
@@ -105,7 +105,7 @@ function get_pos_in_world(x, y, gui)
     local screen_width, screen_height = GuiGetScreenDimensions(gui)
     local resolution_width, resolution_height = get_resolution(gui)
     local camera_x, camera_y = GameGetCameraPos()
-    local bounds_x, bounds_y, bounds_width, bounds_height = GameGetCameraBounds()
+    local bounds_width, bounds_height = select(2, GameGetCameraBounds())
     return x / screen_width * resolution_width + camera_x - bounds_width * 0.5 - tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_X")),
         y / screen_height * resolution_height + camera_y - bounds_height * 0.5 - tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_Y"))
 end
@@ -174,18 +174,6 @@ function get_attack_ranged_pos(entity, attack_info)
     pos_x, pos_y = vec_rotate(pos_x, pos_y, rotation)
     pos_x, pos_y = vec_add(pos_x, pos_y, x, y)
     return pos_x, pos_y
-end
-
-local ids = {}
-local max_id = 0x7FFFFFFF
-function new_id(s)
-    local id = ids[s]
-    if id == nil then
-        id = max_id
-        ids[s] = id
-        max_id = id - 1
-    end
-    return id
 end
 
 function window_new(gui)
@@ -286,6 +274,16 @@ end
 --#endregion
 
 --#region
+
+local operands = {}
+local function pop()
+    return table.remove(operands)
+end
+
+function operand(v)
+    table.insert(operands, v)
+    return pop
+end
 
 local raw_tostring = tostring
 function tostring(v)
