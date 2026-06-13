@@ -900,11 +900,13 @@ local function update_window()
         GuiImage(gui, 1, 0, 0, "data/ui_gfx/inventory/highlight.xml")
         local highlight_width, highlight_height = select(6, GuiGetPreviousWidgetInfo(gui))
         local gui_enabled_player = get_player_gui_enabled()
+        players = table.filter(players, function(player) return player ~= gui_enabled_player end)
         table.sort(players, function(a, b)
             local a_object = Player(a)
             local b_object = Player(b)
-            return a_object.index < b_object.index or a == gui_enabled_player
+            return a_object.index < b_object.index
         end)
+        table.insert(players, 1, gui_enabled_player)
         for i, player in ipairs(players) do
             if player == gui_enabled_player or not GameIsInventoryOpen() then
                 local text = "P" .. Player(player).index

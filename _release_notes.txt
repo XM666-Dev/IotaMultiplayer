@@ -1,4 +1,8 @@
-﻿beta-1.0-20250316
+﻿beta-1.0.1-20260613
+-fix compatibility with new version of mnee
+-fix multibar gui missing
+
+beta-1.0-20250316
 -fix polymorph corpse showing
 -fix auto teleport don't work and stuck
 -add shift+t manual teleport
