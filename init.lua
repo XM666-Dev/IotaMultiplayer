@@ -351,7 +351,7 @@ local function mnin_stick_raw(mod_id, bind_id, pressed_mode, is_vip, inmode)
     local val_x, gone_x, buttoned_x = mnee.mnin_axis(mod_id, binding.axes[1], true, pressed_mode, is_vip, inmode)
     local val_y, gone_y, buttoned_y = mnee.mnin_axis(mod_id, binding.axes[2], true, pressed_mode, is_vip, inmode)
     local direction = math.rad(math.floor(math.deg(math.atan2(val_y, val_x)) + 0.5))
-    val_x, val_y = pen.rnd(mnee.apply_deadzone(math.min(val_x, 1), binding.jpad_type, binding.deadzone), acc), pen.rounder(mnee.apply_deadzone(math.min(val_y, 1), binding.jpad_type, binding.deadzone), acc)
+    val_x, val_y = pen.rnd(mnee.apply_deadzone(math.min(val_x, 1), binding.jpad_type, binding.deadzone), acc), pen.rnd(mnee.apply_deadzone(math.min(val_y, 1), binding.jpad_type, binding.deadzone), acc)
     return {math.min(val_x, 1), math.min(val_y, 1)}, gone_x or gone_y, {buttoned_x, buttoned_y}, direction
 end
 local function is_pressed(a, b, emulated)
