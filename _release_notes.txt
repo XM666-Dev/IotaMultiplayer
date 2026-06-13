@@ -1,4 +1,7 @@
-﻿beta-1.0.1-20260613
+﻿beta-1.0.2-20260613
+-fix pickup tooltip gui text
+
+beta-1.0.1-20260613
 -fix compatibility with new version of mnee
 -fix multibar gui missing
 

@@ -566,15 +566,24 @@ local item_list = {
         pred = pred_tag("coop_respawn"),
         is_pickable = function(v, is_pickable)
             local shared_indexs = Share(v).shared_indexs
-            local dead_players = table.filter(get_players_including_disabled(), function(v) return not Player(v).damage_model_._enabled end)
-            for i, dead_player in ipairs(dead_players) do
-                is_pickable = is_pickable or not table.find(shared_indexs, Player(dead_player).index)
-            end
-            return is_pickable
+            return is_pickable or table.find(get_players_including_disabled(), function(player)
+                local player_object = Player(player)
+                return not player_object.damage_model_._enabled and not table.find(shared_indexs, player_object.index)
+            end)
         end,
         item_pickup_radius = 100,
         ui_name = "$iota_multiplayer.item_resurrect",
         custom_pickup_string = "$iota_multiplayer.itempickup_use",
+        custom_pickup_string_func = function(custom_pickup_string, input_name, ui_name, v, picker)
+            local shared_indexs = Share(v).shared_indexs
+            local dead_player = table.find(get_players_including_disabled(), function(player)
+                local player_object = Player(player)
+                return not player_object.damage_model_._enabled and not table.find(shared_indexs, player_object.index)
+            end)
+            local dead_player_object = Player(dead_player)
+            local interact_input_name = dead_player_object:get_binding_keys("interact")
+            return GameTextGet(custom_pickup_string, interact_input_name, ui_name)
+        end,
     },
 }
 local function get_item_data(v)
@@ -1003,6 +1012,7 @@ local function update_window()
                 local item_component = EntityGetFirstComponent(item, "ItemComponent")
                 local ui_name = item_component and ComponentGetValue2(item_component, "item_name") or ""
                 local custom_pickup_string = item_component and ComponentGetValue2(item_component, "custom_pickup_string") or ""
+                local custom_pickup_string_func
                 if custom_pickup_string == "" then
                     custom_pickup_string = "$itempickup_pick"
                 end
@@ -1014,8 +1024,15 @@ local function update_window()
                     if item_data.custom_pickup_string ~= nil then
                         custom_pickup_string = fetch(item_data.custom_pickup_string)
                     end
+                    custom_pickup_string_func = item_data.custom_pickup_string_func
                 end
-                widget_list_insert(widget_list, GuiText, x, y, GameTextGet(custom_pickup_string, "[E]", GameTextGetTranslatedOrNot(ui_name)))
+                local player_object = Player(player)
+                local translated_input_name = player_object:get_binding_keys("interact")
+                local translated_ui_name = GameTextGetTranslatedOrNot(ui_name)
+                local text = custom_pickup_string_func
+                    and custom_pickup_string_func(custom_pickup_string, translated_input_name, translated_ui_name, item, player)
+                    or GameTextGet(custom_pickup_string, translated_input_name, translated_ui_name)
+                widget_list_insert(widget_list, GuiText, x, y, text)
                 widget_list_insert(widget_list, GuiAnimateEnd)
             end
         end

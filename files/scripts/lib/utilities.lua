@@ -81,6 +81,10 @@ function Player:jpad_check(bind_id)
     return mnee.jpad_check(mnee.get_pbd(mnee.get_bindings()["iota_multiplayer" .. self.index][bind_id]).main)
 end
 
+function Player:get_binding_keys(bind_id, is_compact)
+    return mnee.get_binding_keys("iota_multiplayer" .. self.index, bind_id, is_compact)
+end
+
 function Player:get_camera_pos()
     if self.shooter ~= nil and self.inventory ~= nil then
         return self.shooter.mDesiredCameraPos()
