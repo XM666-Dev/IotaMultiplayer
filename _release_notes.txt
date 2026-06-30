@@ -1,4 +1,7 @@
-﻿beta-1.0.2-20260613
+﻿beta-1.0.3-20260630
+-optimize code
+
+beta-1.0.2-20260613
 -fix pickup tooltip gui text
 
 beta-1.0.1-20260613
