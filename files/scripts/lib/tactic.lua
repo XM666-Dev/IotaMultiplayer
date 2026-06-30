@@ -285,14 +285,6 @@ function operand(v)
     return pop
 end
 
-local raw_tostring = tostring
-function tostring(v)
-    if type(v) ~= "number" then
-        return raw_tostring(v)
-    end
-    return ("%.99f"):format(v):match("^(.-)%.?0*$")
-end
-
 function string.from(value)
     if type(value) == "table" then
         local t = {}
