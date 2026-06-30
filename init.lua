@@ -801,6 +801,8 @@ ModImageSetPixel(bar_bg, 1, 1, fill_color)
 local previous_picked = false
 local window = window_new(gui)
 local function update_window()
+    if ModSettingGet("iota_multiplayer.gui_disabled") then return end
+
     local players_including_disabled = get_players_including_disabled()
     if #players_including_disabled < 2 then return end
     local widget_list = widget_list_begin(window, 1001)
