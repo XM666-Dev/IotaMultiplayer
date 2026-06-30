@@ -1,4 +1,7 @@
-﻿beta-1.0.3-20260630
+﻿beta-1.0.4-20260630
+-add gui disable setting
+
+beta-1.0.3-20260630
 -optimize code
 
 beta-1.0.2-20260613
