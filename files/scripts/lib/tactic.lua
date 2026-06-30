@@ -62,54 +62,6 @@ function get_game_effect(entity, name)
     return validate(effect), validate(ComponentGetEntity(effect))
 end
 
-function get_frame_num_next()
-    return GameGetFrameNum() + 1
-end
-
-local raw_gui
-
-function get_resolution(gui)
-    if gui == nil then
-        if raw_gui == nil then
-            raw_gui = GuiCreate()
-        end
-        gui = raw_gui
-    end
-    local virtual_resolution_x = tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_X"))
-    local screen_width, screen_height = GuiGetScreenDimensions(gui)
-    return virtual_resolution_x, virtual_resolution_x * screen_height / screen_width
-end
-
-function get_pos_on_screen(x, y, gui)
-    if gui == nil then
-        if raw_gui == nil then
-            raw_gui = GuiCreate()
-        end
-        gui = raw_gui
-    end
-    local camera_x, camera_y = GameGetCameraPos()
-    local bounds_width, bounds_height = select(3, GameGetCameraBounds())
-    local resolution_width, resolution_height = get_resolution(gui)
-    local screen_width, screen_height = GuiGetScreenDimensions(gui)
-    return (x - camera_x + bounds_width * 0.5 + tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_X"))) / resolution_width * screen_width,
-        (y - camera_y + bounds_height * 0.5 + tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_Y"))) / resolution_height * screen_height
-end
-
-function get_pos_in_world(x, y, gui)
-    if gui == nil then
-        if raw_gui == nil then
-            raw_gui = GuiCreate()
-        end
-        gui = raw_gui
-    end
-    local screen_width, screen_height = GuiGetScreenDimensions(gui)
-    local resolution_width, resolution_height = get_resolution(gui)
-    local camera_x, camera_y = GameGetCameraPos()
-    local bounds_width, bounds_height = select(3, GameGetCameraBounds())
-    return x / screen_width * resolution_width + camera_x - bounds_width * 0.5 - tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_X")),
-        y / screen_height * resolution_height + camera_y - bounds_height * 0.5 - tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_Y"))
-end
-
 function get_last_component(components)
     local index = 0
     for i, v in ipairs(components) do
@@ -174,6 +126,61 @@ function get_attack_ranged_pos(entity, attack_info)
     pos_x, pos_y = vec_rotate(pos_x, pos_y, rotation)
     pos_x, pos_y = vec_add(pos_x, pos_y, x, y)
     return pos_x, pos_y
+end
+
+local max_id = 1
+function get_new_entities_range()
+    local previous_max_id = max_id
+    max_id = EntitiesGetMaxID()
+    return previous_max_id, max_id
+end
+
+function get_frame_num_next()
+    return GameGetFrameNum() + 1
+end
+
+local raw_gui
+
+function get_resolution(gui)
+    if gui == nil then
+        if raw_gui == nil then
+            raw_gui = GuiCreate()
+        end
+        gui = raw_gui
+    end
+    local virtual_resolution_x = tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_X"))
+    local screen_width, screen_height = GuiGetScreenDimensions(gui)
+    return virtual_resolution_x, virtual_resolution_x * screen_height / screen_width
+end
+
+function get_pos_on_screen(x, y, gui)
+    if gui == nil then
+        if raw_gui == nil then
+            raw_gui = GuiCreate()
+        end
+        gui = raw_gui
+    end
+    local camera_x, camera_y = GameGetCameraPos()
+    local bounds_width, bounds_height = select(3, GameGetCameraBounds())
+    local resolution_width, resolution_height = get_resolution(gui)
+    local screen_width, screen_height = GuiGetScreenDimensions(gui)
+    return (x - camera_x + bounds_width * 0.5 + tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_X"))) / resolution_width * screen_width,
+        (y - camera_y + bounds_height * 0.5 + tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_Y"))) / resolution_height * screen_height
+end
+
+function get_pos_in_world(x, y, gui)
+    if gui == nil then
+        if raw_gui == nil then
+            raw_gui = GuiCreate()
+        end
+        gui = raw_gui
+    end
+    local screen_width, screen_height = GuiGetScreenDimensions(gui)
+    local resolution_width, resolution_height = get_resolution(gui)
+    local camera_x, camera_y = GameGetCameraPos()
+    local bounds_width, bounds_height = select(3, GameGetCameraBounds())
+    return x / screen_width * resolution_width + camera_x - bounds_width * 0.5 - tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_X")),
+        y / screen_height * resolution_height + camera_y - bounds_height * 0.5 - tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_Y"))
 end
 
 function window_new(gui)
