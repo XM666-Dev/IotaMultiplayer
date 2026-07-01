@@ -55,6 +55,9 @@ local function get_camera_info()
     local shrink_width = max_resolution_x - min_resolution_x * 0.5
     local shrink_height = max_resolution_y - min_resolution_y * 0.5
     local players = table.filter(get_players(), function(v) return Player(v).load_frame ~= GameGetFrameNum() end)
+    if ModSettingGet("iota_multiplayer.camera_centered_only") then
+        players = {camera_center_player}
+    end
     for i, player in ipairs(players) do
         local player_object = Player(player)
         local x, y = player_object:get_camera_pos()
