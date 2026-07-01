@@ -1,4 +1,7 @@
-﻿beta-1.0.4-20260630
+﻿beta-1.0.4-20260701
+-add camera centered only setting
+
+beta-1.0.4-20260630
 -add gui disable setting
 
 beta-1.0.3-20260630

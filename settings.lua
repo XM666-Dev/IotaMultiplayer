@@ -308,6 +308,14 @@ mod_settings = {
                     ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom_max") end,
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom_max") end,
                 },
+            Object{
+                id = "camera_centered_only",
+                value_default = false,
+                scope = MOD_SETTING_SCOPE_RUNTIME,
+            }{
+                    ui_name = function() return "Camera centered only" end,
+                    ui_description = function() return "Only centers camera for one player." end,
+                },
         },
     }{
             ui_name = function() return get_text("iota_multiplayer.setting_camera") end,
@@ -320,7 +328,7 @@ mod_settings = {
 
     }{
             ui_name = function() return "Gui disabled" end,
-            ui_description = function() return "Disables all player guis" end,
+            ui_description = function() return "Disables all player guis." end,
         },
 }
 
