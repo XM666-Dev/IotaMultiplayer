@@ -801,13 +801,24 @@ for i = 0, 2 do
 end
 ModImageSetPixel(bar_bg, 1, 1, fill_color)
 local previous_picked = false
-local window = window_new(gui)
+local window = Window(gui)
+local bar_bg_hash = get_line(function() end)
+local colors_health_bar_hash = get_line(function() end)
+local colors_flying_bar_hash = get_line(function() end)
+local cursor_hash = get_line(function() end)
+local quick_inventory_box_hash = get_line(function() end)
+local highlight_hash = get_line(function() end)
+local item_sprite_hash = get_line(function() end)
+local window_uninitialized = true
+local bars_x, bars_y
+local box_width, box_height
+local highlight_width, highlight_height
 local function update_window()
     if ModSettingGet("iota_multiplayer.gui_disabled") then return end
 
     local players_including_disabled = get_players_including_disabled()
     if #players_including_disabled < 2 then return end
-    local widget_list = widget_list_begin(window, 1001)
+    local draw_list = window:begin(1001)
 
     local players = get_players()
     for i, player in ipairs(players) do
@@ -816,22 +827,25 @@ local function update_window()
         player_y = player_y + (player_object.hitbox_.aabb_max_y or 0)
 
         local x, y = get_pos_on_screen(player_x, player_y, gui)
-        widget_list_insert(widget_list, GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
-        widget_list_insert(widget_list, GuiText, x, y, "P" .. player_object.index)
+        draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
+        draw_list:add(GuiText, x, y, "P" .. player_object.index)
 
         x = x + 6
         y = y + 3
         local width = 4
         local height = 4
-        widget_list_insert(widget_list, GuiImageNinePiece, widget_list_id(widget_list, function() end), x, y, width, height, 1, "mods/iota_multiplayer/files/ui_gfx/hud/bar_bg.png")
+        draw_list:add(GuiImageNinePiece, x, y, width, height, 1, "mods/iota_multiplayer/files/ui_gfx/hud/bar_bg.png")
+        draw_list:bind(bar_bg_hash)
 
         if player_object.damage_model ~= nil then
             local ratio = player_object.damage_model.hp / player_object.damage_model.max_hp
-            widget_list_insert(widget_list, GuiImage, widget_list_id(widget_list, function() end), x, y, "data/ui_gfx/hud/colors_health_bar.png", 1, width * 0.5 * ratio, height * 0.5)
+            draw_list:add(GuiImage, x, y, "data/ui_gfx/hud/colors_health_bar.png", 1, width * 0.5 * ratio, height * 0.5)
+            draw_list:bind(colors_health_bar_hash)
         end
         if player_object.character_data ~= nil and player_object.character_data.mFlyingTimeLeft < player_object.character_data.fly_time_max then
             local ratio = player_object.character_data.mFlyingTimeLeft / player_object.character_data.fly_time_max
-            widget_list_insert(widget_list, GuiImage, widget_list_id(widget_list, function() end), x, y + height * ratio, "data/ui_gfx/hud/colors_flying_bar.png", 1, width * 0.5, height * 0.5 * (1 - ratio))
+            draw_list:add(GuiImage, x, y + height * ratio, "data/ui_gfx/hud/colors_flying_bar.png", 1, width * 0.5, height * 0.5 * (1 - ratio))
+            draw_list:bind(colors_flying_bar_hash)
         end
 
         local camera_x, camera_y = GameGetCameraPos()
@@ -849,7 +863,8 @@ local function update_window()
         if cursor_x_clamped ~= cursor_x or cursor_y_clamped ~= cursor_y then
             local rotation = math.atan2(cursor_y - cursor_y_clamped, cursor_x - cursor_x_clamped)
             x, y = vec_sub(cursor_x_clamped, cursor_y_clamped, vec_rotate(cursor_width, cursor_height * 0.5, rotation))
-            widget_list_insert(widget_list, GuiImage, widget_list_id(widget_list, function() end), x, y, "mods/iota_multiplayer/files/ui_gfx/cursor.png", 1, 1, 1, rotation)
+            draw_list:add(GuiImage, x, y, "mods/iota_multiplayer/files/ui_gfx/cursor.png", 1, 1, 1, rotation)
+            draw_list:bind(cursor_hash)
 
             local mouse_x, mouse_y = InputGetMousePosOnScreen()
             mouse_x, mouse_y = vec_mult(mouse_x, mouse_y, 0.5)
@@ -857,16 +872,19 @@ local function update_window()
                 x, y = vec_sub(cursor_x, cursor_y, cursor_x_clamped, cursor_y_clamped)
                 x, y = vec_sub(cursor_x_clamped, cursor_y_clamped, vec_mult(x, y, 16 / vec_length(x, y)))
                 y = y - select(2, GuiGetTextDimensions(gui, "P" .. player_object.index)) * 0.5
-                widget_list_insert(widget_list, GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
-                widget_list_insert(widget_list, GuiText, x, y, "P" .. player_object.index)
+                draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
+                draw_list:add(GuiText, x, y, "P" .. player_object.index)
             end
         end
     end
 
-    local x, y = tonumber(MagicNumbersGetValue("UI_BARS_POS_X")) - 1, tonumber(MagicNumbersGetValue("UI_BARS_POS_Y"))
-    local box_width, box_height = GuiGetImageDimensions(gui, "data/ui_gfx/inventory/quick_inventory_box.png")
-    GuiImage(gui, 1, 0, 0, "data/ui_gfx/inventory/highlight.xml")
-    local highlight_width, highlight_height = select(6, GuiGetPreviousWidgetInfo(gui))
+    if window_uninitialized then
+        window_uninitialized = false
+        bars_x, bars_y = tonumber(MagicNumbersGetValue("UI_BARS_POS_X")) - 1, tonumber(MagicNumbersGetValue("UI_BARS_POS_Y"))
+        box_width, box_height = GuiGetImageDimensions(gui, "data/ui_gfx/inventory/quick_inventory_box.png")
+        GuiImage(gui, 1, 0, 0, "data/ui_gfx/inventory/highlight.xml")
+        highlight_width, highlight_height = select(6, GuiGetPreviousWidgetInfo(gui))
+    end
     local gui_enabled_player = get_player_gui_enabled()
     local ordered_players = table.filter(players, function(player) return player ~= gui_enabled_player end)
     table.sort(ordered_players, function(a, b)
@@ -878,10 +896,10 @@ local function update_window()
     for i, player in ipairs(ordered_players) do
         if player == gui_enabled_player or not GameIsInventoryOpen() then
             local text = "P" .. Player(player).index
-            local x, y = x - box_width * 0.5, y + box_height * 0.5
+            local x, y = bars_x - box_width * 0.5, bars_y + box_height * 0.5
             y = y - select(2, GuiGetTextDimensions(gui, text)) * 0.5
-            widget_list_insert(widget_list, GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
-            widget_list_insert(widget_list, GuiText, x, y, text)
+            draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
+            draw_list:add(GuiText, x, y, text)
         end
         if player ~= gui_enabled_player and not GameIsInventoryOpen() then
             local player_object = Player(player)
@@ -898,14 +916,16 @@ local function update_window()
                 slots[item] = slot
             end
             do
-                local x = x
+                local x = bars_x
                 for i = 0, 7 do
-                    widget_list_insert(widget_list, GuiOptionsAddForNextWidget, GUI_OPTION.NonInteractive)
-                    widget_list_insert(widget_list, GuiImage, widget_list_id(widget_list, function() end), x, y, "data/ui_gfx/inventory/quick_inventory_box.png", 1, 1)
+                    draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.NonInteractive)
+                    draw_list:add(GuiImage, x, bars_y, "data/ui_gfx/inventory/quick_inventory_box.png", 1, 1)
+                    draw_list:bind(quick_inventory_box_hash)
                     if i == slots[player_object.inventory_.mActiveItem] then
-                        local x, y = x + (highlight_width + 1) * 0.5, y + (highlight_height + 1) * 0.5
-                        widget_list_insert(widget_list, GuiOptionsAddForNextWidget, GUI_OPTION.NonInteractive)
-                        widget_list_insert(widget_list, GuiImage, widget_list_id(widget_list, function() end), x, y, "data/ui_gfx/inventory/highlight.xml", 1, 1, 0, 0, GUI_RECT_ANIMATION_PLAYBACK.Loop)
+                        local x, y = x + (highlight_width + 1) * 0.5, bars_y + (highlight_height + 1) * 0.5
+                        draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.NonInteractive)
+                        draw_list:add(GuiImage, x, y, "data/ui_gfx/inventory/highlight.xml", 1, 1, 0, 0, GUI_RECT_ANIMATION_PLAYBACK.Loop)
+                        draw_list:bind(highlight_hash)
                     end
                     x = x + box_width
                     if i == 3 then
@@ -915,7 +935,7 @@ local function update_window()
             end
             for i, item in ipairs(items) do
                 local slot = slots[item]
-                local x, y = x + slot * box_width, y
+                local x, y = bars_x + slot * box_width, bars_y
                 x, y = vec_add(x, y, vec_mult(box_width, box_height, 0.5))
                 if slot > 3 then
                     x = x + 1
@@ -931,7 +951,7 @@ local function update_window()
                         local width, height = GuiGetImageDimensions(gui, sprite_filename)
                         x, y = vec_sub(x, y, vec_mult(width, height, 0.5))
                     end
-                    widget_list_insert(widget_list, GuiOptionsAddForNextWidget, GUI_OPTION.NonInteractive)
+                    draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.NonInteractive)
                     local material_inventory = EntityGetFirstComponentIncludingDisabled(item, "MaterialInventoryComponent")
                     if material_inventory ~= nil then
                         local color = GameGetPotionColorUint(item)
@@ -939,13 +959,14 @@ local function update_window()
                         local green = bit.band(bit.rshift(color, 8), 0xFF) / 0xFF
                         local blue = bit.band(bit.rshift(color, 16), 0xFF) / 0xFF
                         local alpha = bit.rshift(color, 24) / 0xFF
-                        widget_list_insert(widget_list, GuiColorSetForNextWidget, red, green, blue, alpha)
+                        draw_list:add(GuiColorSetForNextWidget, red, green, blue, alpha)
                     end
-                    widget_list_insert(widget_list, GuiImage, widget_list_id(widget_list, function() end), x, y, sprite_filename, 1, 1, 0, 0, GUI_RECT_ANIMATION_PLAYBACK.Loop)
+                    draw_list:add(GuiImage, x, y, sprite_filename, 1, 1, 0, 0, GUI_RECT_ANIMATION_PLAYBACK.Loop)
+                    draw_list:bind(item_sprite_hash)
                 end
             end
         end
-        y = y + 24
+        bars_y = bars_y + 24
     end
 
     local picked = false
@@ -956,9 +977,9 @@ local function update_window()
         if item ~= nil then
             picked = true
             if EntityGetComponent(item, "ItemComponent") == nil then
-                widget_list_insert(widget_list, GuiAnimateBegin)
-                widget_list_insert(widget_list, GuiAnimateAlphaFadeIn, 3458923234, 0.1, 0, not previous_picked)
-                widget_list_insert(widget_list, GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
+                draw_list:add(GuiAnimateBegin)
+                draw_list:add(GuiAnimateAlphaFadeIn, 3458923234, 0.1, 0, not previous_picked)
+                draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
                 local item_component = EntityGetFirstComponent(item, "ItemComponent")
                 local ui_name = item_component and ComponentGetValue2(item_component, "item_name") or ""
                 local custom_pickup_string = item_component and ComponentGetValue2(item_component, "custom_pickup_string") or ""
@@ -982,14 +1003,13 @@ local function update_window()
                 local text = custom_pickup_string_func
                     and custom_pickup_string_func(custom_pickup_string, translated_input_name, translated_ui_name, item, player)
                     or GameTextGet(custom_pickup_string, translated_input_name, translated_ui_name)
-                widget_list_insert(widget_list, GuiText, x, y, text)
-                widget_list_insert(widget_list, GuiAnimateEnd)
+                draw_list:add(GuiText, x, y, text)
+                draw_list:add(GuiAnimateEnd)
             end
         end
     end
     previous_picked = picked
-
-    widget_list_end(widget_list)
+    draw_list:dispatch()
 end
 
 function OnWorldPreUpdate()

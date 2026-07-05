@@ -5,7 +5,6 @@ dofile_once("data/scripts/lib/utilities.lua")
 NUMERIC_CHARACTERS = "0123456789"
 
 local ModTextFileSetContent = ModTextFileSetContent
-
 function append_translations(filename)
     local common = "data/translations/common.csv"
     ModTextFileSetContent(common, ModTextFileGetContent(common) .. ModTextFileGetContent(filename):match("^.-\n(.*)$"))
@@ -182,49 +181,61 @@ function get_pos_in_world(x, y, gui)
         y / screen_height * resolution_height + camera_y - bounds_height * 0.5 - tonumber(MagicNumbersGetValue("VIRTUAL_RESOLUTION_OFFSET_Y"))
 end
 
-function window_new(gui)
-    return {gui = gui, ids = {}, id = 0xFFFFFFFFFFFF}
+local funcinfo = jit.util.funcinfo
+function get_line(f)
+    return funcinfo(f).currentline
 end
 
-function widget_list_begin(window, z)
-    GuiStartFrame(window.gui)
-    return {window = window, z = z, widgets = {}, counts = {}}
+local class_metatable = {
+    __call = function(t, ...)
+        return setmetatable(t[1](...), t)
+    end,
+}
+local function Class(f)
+    local t = {f}
+    t.__index = t
+    return setmetatable(t, class_metatable)
+end
+Window = Class(function(gui)
+    return {gui = gui, max_id = 0xFFFFFFFFFFFF, ids = {}}
+end)
+
+function Window:begin(depth)
+    GuiStartFrame(self.gui)
+    GuiZSet(self.gui, depth)
+    return DrawList(self, depth)
 end
 
-function widget_list_insert(widget_list, ...)
-    table.insert(widget_list.widgets, {...})
+DrawList = Class(function(window, depth)
+    return {window = window, depth = depth, draws = {}, hash_counts = {}}
+end)
+
+function DrawList:add(...)
+    table.insert(self.draws, {...})
 end
 
-function widget_list_end(widget_list)
-    for i, widget in ipairs(widget_list.widgets) do
-        if widget_list.z ~= nil then
-            GuiZSetForNextWidget(widget_list.window.gui, #widget_list.widgets - i + widget_list.z)
-        end
-        widget[1](widget_list.window.gui, unpack(widget, 2))
-    end
+function DrawList:bind(hash)
+    table.insert(self.draws[#self.draws], self:id(hash), 2)
 end
 
-function widget_list_id(widget_list, f)
-    local line = jit.util.funcinfo(f).currentline
+function DrawList:id(hash)
+    local hash_count = (self.hash_counts[hash] or 0) + 1
+    self.hash_counts[hash] = hash_count
 
-    local count = widget_list.counts[line]
-    if count == nil then
-        count = 0
-    else
-        count = count + 1
-    end
-    widget_list.counts[line] = count
+    local hash_key = bit.bor(hash, bit.lshift(hash_count, 16))
+    local id = self.window.ids[hash_key]
+    if id ~= nil then return id end
 
-    local k = bit.bor(line, bit.lshift(count, 16))
-
-    local id = widget_list.window.ids[k]
-    if id == nil then
-        id = widget_list.window.id
-        widget_list.window.id = id - 1
-        widget_list.window.ids[k] = id
-    end
-
+    id = self.window.max_id
+    self.window.ids[hash_key] = id
+    self.window.max_id = id - 1
     return id
+end
+
+function DrawList:dispatch()
+    for i, draw in ipairs(self.draws) do
+        draw[1](self.window.gui, unpack(draw, 2))
+    end
 end
 
 function serialize(v)
@@ -305,7 +316,7 @@ function serialize_parse_safe(v, formatters, values)
     table.insert(values, v)
 end
 
-local tactic_filename = jit.util.funcinfo(setfenv(1, getfenv())).source
+local tactic_filename = funcinfo(setfenv(1, getfenv())).source
 local temporary_filename = tactic_filename .. "/temporary.lua"
 function deserialize(s)
     ModTextFileSetContent(temporary_filename, "return " .. s)
@@ -565,16 +576,6 @@ local component_metatable = {
         end
     end,
 }
-local field_class_metatable = {
-    __call = function(t, ...)
-        return setmetatable(t[1](...), t)
-    end,
-}
-local function FieldClass(f)
-    local t = {f}
-    t.__index = t
-    return setmetatable(t, field_class_metatable)
-end
 local function EntityGetFirstComponentWithValue(entity_id, table_of_component_values, ...)
     local f = EntityGetFirstComponentIncludingDisabled
     local t = {...}
@@ -591,7 +592,7 @@ local function EntityGetFirstComponentWithValue(entity_id, table_of_component_va
 end
 ---@class ComponentField
 ---@type table|fun(component_type_name: string|table, tag: string|function?, ...): ComponentField
-ComponentField = FieldClass(function(...)
+ComponentField = Class(function(...)
     local field = {EntityGetFirstComponentIncludingDisabled, ...}
     local v = select(-1, ...)
     local s = type(v)
@@ -624,7 +625,7 @@ end
 
 ---@class VariableField
 ---@type table|fun(tag: string, field: "value_string"|"value_int"|"value_bool"|"value_float", default?: string|integer|boolean|number): VariableField
-VariableField = FieldClass(function(tag, field, default)
+VariableField = Class(function(tag, field, default)
     return {tag = tag, field = field, default = default}
 end)
 
@@ -653,8 +654,8 @@ function VariableField:set(entity, k, v)
     end
 end
 
-FileField = FieldClass(function(f, default)
-    local filename = ("%s/%s.txt"):format(tactic_filename, jit.util.funcinfo(f).currentline)
+FileField = Class(function(f, default)
+    local filename = ("%s/%s.txt"):format(tactic_filename, get_line(f))
     if default ~= nil then
         ModTextFileSetContent(filename, default)
     end
@@ -669,7 +670,7 @@ function FileField:set(entity, k, v)
     ModTextFileSetContent(self[1], v)
 end
 
-NumericField = FieldClass(function(field)
+NumericField = Class(function(field)
     return {field}
 end)
 
@@ -681,7 +682,7 @@ function NumericField:set(entity, k, v)
     self[1]:set(entity, k, ("%.16a"):format(v))
 end
 
-SerializedField = FieldClass(function(field, safe)
+SerializedField = Class(function(field, safe)
     return {field, safe}
 end)
 
