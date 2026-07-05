@@ -105,7 +105,7 @@ end
 local raw_game_get_camera_bounds = GameGetCameraBounds
 function GameGetCameraBounds()
     local x, y, w, h = raw_game_get_camera_bounds()
-    local camera_x, camera_y, camera_zoom = get_camera_info()
+    local camera_zoom = select(3, get_camera_info())
     local ratio = (1 - camera_zoom) * 0.5
     return x + w * ratio, y + h * ratio, w * camera_zoom, h * camera_zoom
 end
@@ -113,7 +113,7 @@ end
 local raw_get_resolution = get_resolution
 function get_resolution(gui)
     local width, height = raw_get_resolution(gui)
-    local camera_x, camera_y, camera_zoom = get_camera_info()
+    local camera_zoom = select(3, get_camera_info())
     return width * camera_zoom, height * camera_zoom
 end
 
@@ -1006,6 +1006,23 @@ local function update_window()
             end
         end
 
+        local ability_component = EntityGetFirstComponentIncludingDisabled(picked_item, "AbilityComponent")
+        if ability_component ~= nil and EntityHasTag(picked_item, "wand") then
+            ui_name = "$item_wand"
+        end
+
+        local action_component = EntityGetFirstComponent(picked_item, "ItemActionComponent")
+        if action_component ~= nil then
+            dofile_once("data/scripts/gun/gun_actions.lua")
+            local action_id = ComponentGetValue2(action_component, "action_id")
+            for i, action in ipairs(actions) do
+                if action.id == action_id then
+                    ui_name = action.name
+                    break
+                end
+            end
+        end
+
         local item_data = get_item_data(picked_item)
         if item_data ~= nil then
             if item_data.ui_name ~= nil then
@@ -1018,10 +1035,12 @@ local function update_window()
 
         local screen_width, screen_height = GuiGetScreenDimensions(gui)
         local x, y = screen_width * 0.5, screen_height - 40
-        local picker_object = Player(picker)
-        local translated_input_name = picker_object:get_binding_keys("interact")
-        local translated_ui_name = GameTextGetTranslatedOrNot(ui_name)
-        local text = GameTextGet(custom_pickup_string, translated_input_name, translated_ui_name)
+        local text = custom_pickup_string
+        if custom_pickup_string:find("^%$") then
+            local translated_input_name = Player(picker):get_binding_keys("interact")
+            local translated_ui_name = GameTextGetTranslatedOrNot(ui_name)
+            text = GameTextGet(custom_pickup_string, translated_input_name, translated_ui_name)
+        end
         draw_list:add(GuiAnimateBegin)
         draw_list:add(GuiAnimateAlphaFadeIn, 3458923234, 0.1, 0, not previous_picked)
         draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
