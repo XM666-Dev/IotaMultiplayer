@@ -207,7 +207,7 @@ function Window:begin(depth)
 end
 
 DrawList = Class(function(window, depth)
-    return {window = window, depth = depth, draws = {}, hash_counts = {}}
+    return {window = window, depth = depth, layer_depth = depth + 1, draws = {}, hash_counts = {}}
 end)
 
 function DrawList:add(...)
@@ -215,21 +215,24 @@ function DrawList:add(...)
 end
 
 function DrawList:bind(hash)
-    table.insert(self.draws[#self.draws], self:id(hash), 2)
-end
-
-function DrawList:id(hash)
     local hash_count = (self.hash_counts[hash] or 0) + 1
+    local hash_key = bit.bor(hash, bit.lshift(hash_count, 16))
     self.hash_counts[hash] = hash_count
 
-    local hash_key = bit.bor(hash, bit.lshift(hash_count, 16))
     local id = self.window.ids[hash_key]
-    if id ~= nil then return id end
+    if id == nil then
+        id = self.window.max_id
+        self.window.ids[hash_key] = id
+        self.window.max_id = id - 1
+    end
+    table.insert(self.draws[#self.draws], 2, id)
+end
 
-    id = self.window.max_id
-    self.window.ids[hash_key] = id
-    self.window.max_id = id - 1
-    return id
+local layer_step = 1 / 1024
+function DrawList:layer()
+    local depth = self.layer_depth
+    self.layer_depth = depth - layer_step
+    table.insert(self.draws, {GuiZSet, depth})
 end
 
 function DrawList:dispatch()
@@ -285,7 +288,7 @@ function serialize_safe(v)
     elseif type == "table" then
         local formatters = {}
         local values = {}
-        serialize_parse(v, formatters, values)
+        serialize_parse_safe(v, formatters, values)
         return table.concat(formatters):format(unpack(values))
     end
     return tostring(v)
@@ -303,9 +306,9 @@ function serialize_parse_safe(v, formatters, values)
         table.insert(formatters, "{")
         for key, value in pairs(v) do
             table.insert(formatters, "[")
-            serialize_parse(key, formatters, values)
+            serialize_parse_safe(key, formatters, values)
             table.insert(formatters, "]=")
-            serialize_parse(value, formatters, values)
+            serialize_parse_safe(value, formatters, values)
             table.insert(formatters, ",")
         end
         table.insert(formatters, "}")
@@ -656,13 +659,11 @@ end
 
 FileField = Class(function(f, default)
     local filename = ("%s/%s.txt"):format(tactic_filename, get_line(f))
-    if default ~= nil then
-        ModTextFileSetContent(filename, default)
-    end
-    return {filename}
+    return {filename, default}
 end)
 
 function FileField:get()
+    if not ModDoesFileExist(self[1]) then return self[2] end
     return ModTextFileGetContent(self[1])
 end
 

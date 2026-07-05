@@ -1,19 +1,17 @@
 dofile_once("data/scripts/lib/mod_settings.lua")
 
-local object_metatable = {
-    __call = function(t, getters)
-        return setmetatable(t, {
-            __index = function(t, k)
-                local getter = getters[k]
-                if getter ~= nil then
-                    return getter(t, k)
-                end
-            end,
-        })
+local index_table_metatable = {
+    __call = function(t, indexes)
+        t[1] = indexes
+        return t
+    end,
+    __index = function(t, k)
+        local index = t[1][k]
+        if index ~= nil then return index(t, k) end
     end,
 }
-local function Object(t)
-    return setmetatable(t, object_metatable)
+local function IndexTable(t)
+    return setmetatable(t, index_table_metatable)
 end
 ---@param str string
 local function parse_csv(str)
@@ -194,10 +192,10 @@ end
 local mod_id = "iota_multiplayer"
 mod_settings_version = 1
 mod_settings = {
-    Object{
+    IndexTable{
         category_id = "share",
         settings = {
-            Object{
+            IndexTable{
                 id = "share_money",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
@@ -205,7 +203,7 @@ mod_settings = {
                     ui_name = function() return get_text("iota_multiplayer.setting_share_money") end,
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_share_money") end,
                 },
-            Object{
+            IndexTable{
                 id = "share_temple_heart",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
@@ -213,7 +211,7 @@ mod_settings = {
                     ui_name = function() return get_text("iota_multiplayer.setting_share_temple_heart") end,
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_heart") end,
                 },
-            Object{
+            IndexTable{
                 id = "share_temple_refresh",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
@@ -221,7 +219,7 @@ mod_settings = {
                     ui_name = function() return get_text("iota_multiplayer.setting_share_temple_refresh") end,
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_share_temple_refresh") end,
                 },
-            Object{
+            IndexTable{
                 id = "share_temple_perk",
                 value_default = true,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
@@ -234,10 +232,10 @@ mod_settings = {
             ui_name = function() return get_text("iota_multiplayer.setting_share") end,
             ui_description = function() return get_text("iota_multiplayer.settingdesc_share") end,
         },
-    Object{
+    IndexTable{
         category_id = "friendly_fire",
         settings = {
-            Object{
+            IndexTable{
                 id = "friendly_fire_percent",
                 value_default = 0.5,
                 value_min = 0,
@@ -249,7 +247,7 @@ mod_settings = {
                     ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_percent") end,
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_percent") end,
                 },
-            Object{
+            IndexTable{
                 id = "friendly_fire_kick",
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
@@ -257,7 +255,7 @@ mod_settings = {
                     ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick") end,
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick") end,
                 },
-            Object{
+            IndexTable{
                 id = "friendly_fire_kick_drop",
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
@@ -265,7 +263,7 @@ mod_settings = {
                     ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire_kick_drop") end,
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire_kick_drop") end,
                 },
-            Object{
+            IndexTable{
                 id = "friendly_fire_force",
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
@@ -278,10 +276,10 @@ mod_settings = {
             ui_name = function() return get_text("iota_multiplayer.setting_friendly_fire") end,
             ui_description = function() return get_text("iota_multiplayer.settingdesc_friendly_fire") end,
         },
-    Object{
+    IndexTable{
         category_id = "camera",
         settings = {
-            Object{
+            IndexTable{
                 id = "camera_zoom_min",
                 value_default = 1,
                 value_min = 1,
@@ -293,7 +291,7 @@ mod_settings = {
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom_min") end,
                     value_max = function() return ModSettingGetNextValue("iota_multiplayer.camera_zoom_max") end,
                 },
-            Object{
+            IndexTable{
                 id = "camera_zoom_max",
                 value_default = 1,
                 value_min = 1,
@@ -308,7 +306,7 @@ mod_settings = {
                     ui_name = function() return get_text("iota_multiplayer.setting_camera_zoom_max") end,
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_zoom_max") end,
                 },
-            Object{
+            IndexTable{
                 id = "camera_centered_only",
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
@@ -321,7 +319,7 @@ mod_settings = {
             ui_name = function() return get_text("iota_multiplayer.setting_camera") end,
             ui_description = function() return get_text("iota_multiplayer.settingdesc_camera") end,
         },
-    Object{
+    IndexTable{
         id = "gui_disabled",
         value_default = false,
         scope = MOD_SETTING_SCOPE_RUNTIME,

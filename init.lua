@@ -16,7 +16,9 @@ ModLuaFileAppend("data/scripts/biomes/temple_altar.lua", "mods/iota_multiplayer/
 ModLuaFileAppend("data/scripts/perks/perk.lua", "mods/iota_multiplayer/files/scripts/perks/perk_appends.lua")
 ModLuaFileAppend("data/scripts/newgame_plus.lua", "mods/iota_multiplayer/files/scripts/newgame_plus_appends.lua")
 ModLuaFileAppend("mods/mnee/bindings.lua", "mods/iota_multiplayer/files/scripts/mnee.lua")
-ModLuaFileAppend("mods/spell_lab_shugged/files/gui/get_player.lua", "mods/iota_multiplayer/files/scripts/get_player_appends.lua")
+if ModIsEnabled("spell_lab_shugged") then
+    ModLuaFileAppend("mods/spell_lab_shugged/files/gui/get_player.lua", "mods/iota_multiplayer/files/scripts/get_player_appends.lua")
+end
 ModTextFileSetContent("mods/iota_multiplayer/files/scripts/get_player_appends.lua", 'dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua") function get_player() return get_player_at_index(mod.camera_center_index) end')
 
 append_translations("mods/iota_multiplayer/files/translations.csv")
@@ -575,16 +577,16 @@ local item_list = {
         end,
         item_pickup_radius = 100,
         ui_name = "$iota_multiplayer.item_resurrect",
-        custom_pickup_string = "$iota_multiplayer.itempickup_use",
-        custom_pickup_string_func = function(custom_pickup_string, input_name, ui_name, v, picker)
+        custom_pickup_string = function(v, picker)
             local shared_indexs = Share(v).shared_indexs
             local dead_player = table.find(get_players_including_disabled(), function(player)
                 local player_object = Player(player)
                 return not player_object.damage_model_._enabled and not table.find(shared_indexs, player_object.index)
             end)
             local dead_player_object = Player(dead_player)
-            local interact_input_name = dead_player_object:get_binding_keys("interact")
-            return GameTextGet(custom_pickup_string, interact_input_name, ui_name)
+            local input_name = dead_player_object:get_binding_keys("interact")
+            local ui_name = GameTextGetTranslatedOrNot("$iota_multiplayer.item_resurrect")
+            return GameTextGet("$iota_multiplayer.itempickup_use", input_name, ui_name)
         end,
     },
 }
@@ -818,7 +820,7 @@ local function update_window()
 
     local players_including_disabled = get_players_including_disabled()
     if #players_including_disabled < 2 then return end
-    local draw_list = window:begin(1001)
+    local draw_list = window:begin(1000)
 
     local players = get_players()
     for i, player in ipairs(players) do
@@ -827,6 +829,7 @@ local function update_window()
         player_y = player_y + (player_object.hitbox_.aabb_max_y or 0)
 
         local x, y = get_pos_on_screen(player_x, player_y, gui)
+        draw_list:layer()
         draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
         draw_list:add(GuiText, x, y, "P" .. player_object.index)
 
@@ -839,11 +842,13 @@ local function update_window()
 
         if player_object.damage_model ~= nil then
             local ratio = player_object.damage_model.hp / player_object.damage_model.max_hp
+            draw_list:layer()
             draw_list:add(GuiImage, x, y, "data/ui_gfx/hud/colors_health_bar.png", 1, width * 0.5 * ratio, height * 0.5)
             draw_list:bind(colors_health_bar_hash)
         end
         if player_object.character_data ~= nil and player_object.character_data.mFlyingTimeLeft < player_object.character_data.fly_time_max then
             local ratio = player_object.character_data.mFlyingTimeLeft / player_object.character_data.fly_time_max
+            draw_list:layer()
             draw_list:add(GuiImage, x, y + height * ratio, "data/ui_gfx/hud/colors_flying_bar.png", 1, width * 0.5, height * 0.5 * (1 - ratio))
             draw_list:bind(colors_flying_bar_hash)
         end
@@ -863,6 +868,7 @@ local function update_window()
         if cursor_x_clamped ~= cursor_x or cursor_y_clamped ~= cursor_y then
             local rotation = math.atan2(cursor_y - cursor_y_clamped, cursor_x - cursor_x_clamped)
             x, y = vec_sub(cursor_x_clamped, cursor_y_clamped, vec_rotate(cursor_width, cursor_height * 0.5, rotation))
+            draw_list:layer()
             draw_list:add(GuiImage, x, y, "mods/iota_multiplayer/files/ui_gfx/cursor.png", 1, 1, 1, rotation)
             draw_list:bind(cursor_hash)
 
@@ -893,11 +899,13 @@ local function update_window()
         return a_object.index < b_object.index
     end)
     table.insert(ordered_players, 1, gui_enabled_player)
+    local y = bars_y
     for i, player in ipairs(ordered_players) do
-        if player == gui_enabled_player or not GameIsInventoryOpen() then
+        if i == 1 or not GameIsInventoryOpen() then
             local text = "P" .. Player(player).index
-            local x, y = bars_x - box_width * 0.5, bars_y + box_height * 0.5
+            local x, y = bars_x - box_width * 0.5, y + box_height * 0.5
             y = y - select(2, GuiGetTextDimensions(gui, text)) * 0.5
+            draw_list:layer()
             draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
             draw_list:add(GuiText, x, y, text)
         end
@@ -919,10 +927,11 @@ local function update_window()
                 local x = bars_x
                 for i = 0, 7 do
                     draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.NonInteractive)
-                    draw_list:add(GuiImage, x, bars_y, "data/ui_gfx/inventory/quick_inventory_box.png", 1, 1)
+                    draw_list:add(GuiImage, x, y, "data/ui_gfx/inventory/quick_inventory_box.png", 1, 1)
                     draw_list:bind(quick_inventory_box_hash)
                     if i == slots[player_object.inventory_.mActiveItem] then
-                        local x, y = x + (highlight_width + 1) * 0.5, bars_y + (highlight_height + 1) * 0.5
+                        local x, y = x + (highlight_width + 1) * 0.5, y + (highlight_height + 1) * 0.5
+                        draw_list:layer()
                         draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.NonInteractive)
                         draw_list:add(GuiImage, x, y, "data/ui_gfx/inventory/highlight.xml", 1, 1, 0, 0, GUI_RECT_ANIMATION_PLAYBACK.Loop)
                         draw_list:bind(highlight_hash)
@@ -935,7 +944,7 @@ local function update_window()
             end
             for i, item in ipairs(items) do
                 local slot = slots[item]
-                local x, y = bars_x + slot * box_width, bars_y
+                local x, y = bars_x + slot * box_width, y
                 x, y = vec_add(x, y, vec_mult(box_width, box_height, 0.5))
                 if slot > 3 then
                     x = x + 1
@@ -951,6 +960,7 @@ local function update_window()
                         local width, height = GuiGetImageDimensions(gui, sprite_filename)
                         x, y = vec_sub(x, y, vec_mult(width, height, 0.5))
                     end
+                    draw_list:layer()
                     draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.NonInteractive)
                     local material_inventory = EntityGetFirstComponentIncludingDisabled(item, "MaterialInventoryComponent")
                     if material_inventory ~= nil then
@@ -966,47 +976,57 @@ local function update_window()
                 end
             end
         end
-        bars_y = bars_y + 24
+        y = y + box_height + 4
     end
 
     local picked = false
-    local screen_width, screen_height = GuiGetScreenDimensions(gui)
-    local x, y = screen_width * 0.5, screen_height - 40
+    local picked_item
+    local picker
     for i, player in ipairs(ordered_players) do
         local item = get_picked(player)
         if item ~= nil then
             picked = true
-            if EntityGetComponent(item, "ItemComponent") == nil then
-                draw_list:add(GuiAnimateBegin)
-                draw_list:add(GuiAnimateAlphaFadeIn, 3458923234, 0.1, 0, not previous_picked)
-                draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
-                local item_component = EntityGetFirstComponent(item, "ItemComponent")
-                local ui_name = item_component and ComponentGetValue2(item_component, "item_name") or ""
-                local custom_pickup_string = item_component and ComponentGetValue2(item_component, "custom_pickup_string") or ""
-                local custom_pickup_string_func
-                if custom_pickup_string == "" then
-                    custom_pickup_string = "$itempickup_pick"
-                end
-                local item_data = get_item_data(item)
-                if item_data ~= nil then
-                    if item_data.ui_name ~= nil then
-                        ui_name = fetch(item_data.ui_name)
-                    end
-                    if item_data.custom_pickup_string ~= nil then
-                        custom_pickup_string = fetch(item_data.custom_pickup_string)
-                    end
-                    custom_pickup_string_func = item_data.custom_pickup_string_func
-                end
-                local player_object = Player(player)
-                local translated_input_name = player_object:get_binding_keys("interact")
-                local translated_ui_name = GameTextGetTranslatedOrNot(ui_name)
-                local text = custom_pickup_string_func
-                    and custom_pickup_string_func(custom_pickup_string, translated_input_name, translated_ui_name, item, player)
-                    or GameTextGet(custom_pickup_string, translated_input_name, translated_ui_name)
-                draw_list:add(GuiText, x, y, text)
-                draw_list:add(GuiAnimateEnd)
+            if not Player(player).gui_._enabled or EntityGetComponent(item, "ItemComponent") == nil then
+                picked_item = item
+                picker = player
+            end
+            break
+        end
+    end
+    if picked_item ~= nil then
+        local ui_name = ""
+        local custom_pickup_string = "$itempickup_pick"
+
+        local item_component = EntityGetFirstComponent(picked_item, "ItemComponent")
+        if item_component ~= nil then
+            ui_name = ComponentGetValue2(item_component, "item_name")
+            custom_pickup_string = ComponentGetValue2(item_component, "custom_pickup_string")
+            if custom_pickup_string == "" then
+                custom_pickup_string = "$itempickup_pick"
             end
         end
+
+        local item_data = get_item_data(picked_item)
+        if item_data ~= nil then
+            if item_data.ui_name ~= nil then
+                ui_name = fetch(item_data.ui_name)
+            end
+            if item_data.custom_pickup_string ~= nil then
+                custom_pickup_string = fetch(item_data.custom_pickup_string, picked_item, picker)
+            end
+        end
+
+        local screen_width, screen_height = GuiGetScreenDimensions(gui)
+        local x, y = screen_width * 0.5, screen_height - 40
+        local picker_object = Player(picker)
+        local translated_input_name = picker_object:get_binding_keys("interact")
+        local translated_ui_name = GameTextGetTranslatedOrNot(ui_name)
+        local text = GameTextGet(custom_pickup_string, translated_input_name, translated_ui_name)
+        draw_list:add(GuiAnimateBegin)
+        draw_list:add(GuiAnimateAlphaFadeIn, 3458923234, 0.1, 0, not previous_picked)
+        draw_list:add(GuiOptionsAddForNextWidget, GUI_OPTION.Align_HorizontalCenter)
+        draw_list:add(GuiText, x, y, text)
+        draw_list:add(GuiAnimateEnd)
     end
     previous_picked = picked
     draw_list:dispatch()
