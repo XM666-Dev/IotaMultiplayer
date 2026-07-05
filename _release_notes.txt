@@ -1,4 +1,9 @@
-﻿beta-1.0.4-20260701
+﻿beta-1.0.5-20260705
+-optimize code
+-improve gui performance
+-improve pickup hint behaviour
+
+beta-1.0.4-20260701
 -add camera centered only setting
 
 beta-1.0.4-20260630
