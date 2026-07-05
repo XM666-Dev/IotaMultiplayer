@@ -3,17 +3,14 @@ dofile_once("mods/mnee/lib.lua")
 
 MAX_PLAYER_NUM = 8
 
-mod = Entity{
-    gui_owner_index = CombinedField(NumericField(FileField("mods/iota_multiplayer/files/gui_owner_index.txt")), function(v)
-        if v ~= nil then return v end
-        return Player(get_player_gui_enabled()).index
-    end),
+mod = EntityClass{
+    gui_control_index = NumericField(FileField(function() end, 0)),
     camera_center_index = VariableField("iota_multiplayer.camera_center_index", "value_int"),
     money = VariableField("iota_multiplayer.money", "value_int"),
     auto_teleport = VariableField("iota_multiplayer.auto_teleport", "value_bool", true),
 } (1)
 
-Player = Entity{
+Player = EntityClass{
     controls = ComponentField("ControlsComponent"),
     shooter = ComponentField("PlatformShooterPlayerComponent"),
     listener = ComponentField("AudioListenerComponent"),
@@ -38,7 +35,7 @@ Player = Entity{
     damage_message = VariableField("iota_multiplayer.damage_message", "value_string"),
     damage_responsible = VariableField("iota_multiplayer.damage_responsible", "value_string"),
     load_frame = VariableField("iota_multiplayer.load_frame", "value_int"),
-    ingestion_data = VariableField("iota_multiplayer.ingestion_data", "value_string"),
+    ingestion_data = SerializedField(VariableField("iota_multiplayer.ingestion_data", "value_string"), true),
 }
 function Player:add()
     if EntityHasTag(self.id, "iota_multiplayer.player") then
@@ -59,10 +56,14 @@ function Player:get_arm_r()
 end
 
 function Player:is_inventory_open()
-    if self.index == mod.gui_owner_index then
-        self = Player(get_player_gui_enabled())
+    local player_object = self
+    if self:is_gui_controlled() then
+        player_object = Player(get_player_gui_enabled())
     end
-    return self.controls_.mButtonFrameInventory == get_frame_num_next() ~= (self.gui_.mActive or false) and not InputIsKeyJustDown(Key_ESCAPE)
+    local inventory = player_object.controls_.mButtonFrameInventory == get_frame_num_next()
+    local active = player_object.gui_.mActive or false
+    local escape = InputIsKeyJustDown(Key_ESCAPE)
+    return inventory ~= active and not escape
 end
 
 function Player:mnin_bind(bind_id, dirty_mode, pressed_mode, is_vip, strict_mode, inmode)
@@ -125,7 +126,7 @@ function Player:set_dead(dead)
     end
     set_component_enabled(polymorph, not dead)
     if dead then
-        self.ingestion_data = serialize(self.ingestion_._members):gsub('"', "'")
+        self.ingestion_data = self.ingestion_._members
         remove_component(self.ingestion_._id)
 
         EntityRemoveTag(self.id, "hittable")
@@ -169,7 +170,7 @@ function Player:set_dead(dead)
             end
         end
     else
-        local ingestion_data = deserialize(self.ingestion_data)
+        local ingestion_data = self.ingestion_data
         if ingestion_data ~= nil then
             local ingestion = EntityAddComponent2(self.id, "IngestionComponent")
             for k, v in pairs(ingestion_data) do
@@ -201,6 +202,11 @@ function Player:set_dead(dead)
         self.damage_model_.invincibility_frames = (self.damage_model_.invincibility_frames or 0) + 60
         self.damage_model_.mFireFramesLeft = math.min(self.damage_model_.mFireFramesLeft or 0, fire and ComponentGetValue2(fire, "frames") or 0, 60)
     end
+end
+
+function Player:is_gui_controlled()
+    if mod.gui_control_index ~= 0 then return self.index == mod.gui_control_index end
+    return self.gui ~= nil and ComponentGetIsEnabled(self.gui._id)
 end
 
 function load_player(x, y)
@@ -246,6 +252,10 @@ function get_player_gui_enabled()
         return player_object.gui ~= nil and ComponentGetIsEnabled(player_object.gui._id)
     end)
 end
+
+Share = EntityClass{
+    shared_indexs = SerializedField(VariableField("iota_multiplayer.shared_indexs", "value_string", "{}")),
+}
 
 function perk_spawn_with_data(x, y, perk_data, script_item_picked_up)
     local entity = EntityLoad("data/entities/items/pickup/perk.xml", x, y)

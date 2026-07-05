@@ -1,7 +1,6 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/environment.lua")
 dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
-local Share = Entity{shared_indexs = SerializedField(VariableField("iota_multiplayer.shared_indexs", "value_string", "{}"))}
 local ids = {
     ["data/entities/items/pickup/heart_fullhp_temple.xml"] = "iota_multiplayer.share_temple_heart",
     ["data/entities/items/pickup/spell_refresh.xml"] = "iota_multiplayer.share_temple_refresh",

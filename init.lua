@@ -209,7 +209,7 @@ local function update_common()
     end
 
     if #players < 1 then
-        local damaged_players = table.copy(players_including_disabled)
+        local damaged_players = table.duplicate(players_including_disabled)
         table.sort(damaged_players, function(a, b)
             return Player(a).damage_frame > Player(b).damage_frame
         end)
@@ -546,7 +546,6 @@ local function pred_tag(...)
         end
     end
 end
-local Share = Entity{shared_indexs = SerializedField(VariableField("iota_multiplayer.shared_indexs", "value_string", "{}"))}
 local item_list = {
     {
         pred = pred_filename("data/entities/items/pickup/heart_fullhp_temple.xml", "data/entities/items/pickup/spell_refresh.xml"),
@@ -562,7 +561,7 @@ local item_list = {
         custom_pickup_string = "$itempickup_open",
         func = function(v, pickupper)
             Player(v).controls_.mButtonFrameInventory = get_frame_num_next()
-            mod.gui_owner_index = Player(pickupper).index
+            mod.gui_control_index = Player(pickupper).index
         end,
     },
     {
@@ -699,13 +698,13 @@ local function update_gui()
     for i, player in ipairs(players_including_disabled) do
         local player_object = Player(player)
         if player_object.controls_.mButtonFrameInventory == get_frame_num_next() then
-            if player_object.index == mod.gui_owner_index then
+            if player_object:is_gui_controlled() then
                 gui_enabled_player_object.controls_.mButtonFrameInventory = get_frame_num_next()
             elseif player_object.gui ~= nil then
                 next_gui_enabled_player = player
             end
         end
-        if player_object.index == mod.gui_owner_index then
+        if player_object:is_gui_controlled() then
             gui_enabled_player_object.controls_.mButtonDownDropItem = player_object.controls_.mButtonDownDropItem
             if player_object.controls_.mButtonFrameDropItem == get_frame_num_next() then
                 gui_enabled_player_object.controls_.mButtonFrameDropItem = get_frame_num_next()
@@ -721,7 +720,7 @@ local function update_gui()
             EntityAddComponent2(gui_enabled_player, "InventoryGuiComponent")
         end
         if next_gui_enabled_player_object.damage_model_._enabled then
-            mod.gui_owner_index = nil
+            mod.gui_control_index = 0
         end
     end
 
@@ -738,7 +737,7 @@ local function update_gui()
 
     local interactor = table.find(players_including_disabled, function(v)
         local object = Player(v)
-        return object.controls_.mButtonFrameInteract == get_frame_num_next() and validate(object.pickupper_.only_pick_this_entity) and object.index ~= mod.gui_owner_index
+        return object.controls_.mButtonFrameInteract == get_frame_num_next() and validate(object.pickupper_.only_pick_this_entity) and not object:is_gui_controlled()
     end)
     if interactor ~= nil then
         local interactor_object = Player(interactor)

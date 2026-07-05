@@ -140,7 +140,6 @@ function get_frame_num_next()
 end
 
 local raw_gui
-
 function get_resolution(gui)
     if gui == nil then
         if raw_gui == nil then
@@ -235,45 +234,137 @@ function serialize(v)
     elseif type == "string" then
         return ("%q"):format(v)
     elseif type == "table" then
-        local t = {"{"}
-        for k, v in pairs(v) do
-            table.insert(t, ("[%s]=%s,"):format(serialize(k), serialize(v)))
-        end
-        table.insert(t, "}")
-        return table.concat(t)
+        local formatters = {}
+        local values = {}
+        serialize_parse(v, formatters, values)
+        return table.concat(formatters):format(unpack(values))
     end
     return tostring(v)
 end
 
+function serialize_parse(v, formatters, values)
+    local type = type(v)
+    if type == "number" then
+        table.insert(formatters, "%.16a")
+    elseif type == "string" then
+        table.insert(formatters, "%q")
+    elseif type == "table" then
+        table.insert(formatters, "{")
+        for key, value in pairs(v) do
+            table.insert(formatters, "[")
+            serialize_parse(key, formatters, values)
+            table.insert(formatters, "]=")
+            serialize_parse(value, formatters, values)
+            table.insert(formatters, ",")
+        end
+        table.insert(formatters, "}")
+        return
+    else
+        table.insert(formatters, "%s")
+    end
+    table.insert(values, v)
+end
+
+function serialize_safe(v)
+    local type = type(v)
+    if type == "number" then
+        return ("%.16a"):format(v)
+    elseif type == "string" then
+        return table.concat{"'", ("%q"):format(v):sub(2, -2), "'"}
+    elseif type == "table" then
+        local formatters = {}
+        local values = {}
+        serialize_parse(v, formatters, values)
+        return table.concat(formatters):format(unpack(values))
+    end
+    return tostring(v)
+end
+
+function serialize_parse_safe(v, formatters, values)
+    local type = type(v)
+    if type == "number" then
+        table.insert(formatters, "%.16a")
+    elseif type == "string" then
+        table.insert(formatters, "'")
+        table.insert(formatters, ("%q"):format(v):sub(2, -2))
+        table.insert(formatters, "'")
+    elseif type == "table" then
+        table.insert(formatters, "{")
+        for key, value in pairs(v) do
+            table.insert(formatters, "[")
+            serialize_parse(key, formatters, values)
+            table.insert(formatters, "]=")
+            serialize_parse(value, formatters, values)
+            table.insert(formatters, ",")
+        end
+        table.insert(formatters, "}")
+        return
+    else
+        table.insert(formatters, "%s")
+    end
+    table.insert(values, v)
+end
+
+local tactic_filename = jit.util.funcinfo(setfenv(1, getfenv())).source
+local temporary_filename = tactic_filename .. "/temporary.lua"
 function deserialize(s)
-    ModTextFileSetContent("data/scripts/empty.lua", "return " .. s)
-    local f, err = loadfile("data/scripts/empty.lua")
+    ModTextFileSetContent(temporary_filename, "return " .. s)
+    local f, err = loadfile(temporary_filename)
     if f == nil then return f, err end
     return f()
 end
 
+local languages = {
+    ["English"] = "en",
+    ["русский"] = "ru",
+    ["Português (Brasil)"] = "pt-br",
+    ["Español"] = "es-es",
+    ["Deutsch"] = "de",
+    ["Français"] = "fr-fr",
+    ["Italiano"] = "it",
+    ["Polska"] = "pl",
+    ["简体中文"] = "zh-cn",
+    ["日本語"] = "jp",
+    ["한국어"] = "ko",
+}
 function get_language()
-    return ({
-        ["English"] = "en",
-        ["русский"] = "ru",
-        ["Português (Brasil)"] = "pt-br",
-        ["Español"] = "es-es",
-        ["Deutsch"] = "de",
-        ["Français"] = "fr-fr",
-        ["Italiano"] = "it",
-        ["Polska"] = "pl",
-        ["简体中文"] = "zh-cn",
-        ["日本語"] = "jp",
-        ["한국어"] = "ko",
-    })[GameTextGet("$current_language")]
+    return languages[GameTextGet("$current_language")]
 end
 
-function debug_print(...)
-    local t = {}
-    for i = 1, select("#", ...) do
-        t[i] = string.from(select(i, ...))
+local function log_parse(v, formatters, values)
+    local type = type(v)
+    if type == "nil" then
+        table.insert(formatters, type)
+        return
+    elseif type == "string" then
+        table.insert(formatters, v)
+        return
+    elseif type == "table" then
+        table.insert(formatters, "{")
+        for key, value in pairs(v) do
+            log_parse(key, formatters, values)
+            table.insert(formatters, "=")
+            log_parse(value, formatters, values)
+            table.insert(formatters, ",")
+        end
+        table.insert(formatters, "}")
+        return
     end
-    local s = table.concat(t, ",")
+    table.insert(formatters, "%s")
+    table.insert(values, v)
+end
+function log(...)
+    local formatters = {}
+    local values = {}
+    local count = select("#", ...)
+    for i = 1, count do
+        local v = select(i, ...)
+        log_parse(v, formatters, values)
+        if i < count then
+            table.insert(formatters, ",")
+        end
+    end
+    local s = table.concat(formatters):format(unpack(values))
     print(s)
     GamePrint(s)
 end
@@ -283,30 +374,17 @@ end
 --#region
 
 local operands = {}
-local function pop()
+local function pop_operand()
     return table.remove(operands)
 end
-
 function operand(v)
     table.insert(operands, v)
-    return pop
-end
-
-function string.from(value)
-    if type(value) == "table" then
-        local t = {}
-        for k, v in pairs(value) do
-            table.insert(t, ("%s=%s"):format(string.from(k), string.from(v)))
-        end
-        return ("{%s}"):format(table.concat(t, ","))
-    end
-    return tostring(value)
+    return pop_operand
 end
 
 function string.raw(s)
     local bytes = {}
-    local t = {s:byte(1, #s)}
-    for i, v in ipairs(t) do
+    for i, v in ipairs{s:byte(1, #s)} do
         if v < 48 or v > 57 and v < 65 or v > 90 and v < 97 or v > 122 then
             table.insert(bytes, 37)
         end
@@ -316,43 +394,47 @@ function string.raw(s)
 end
 
 function table.find(list, pred)
-    for i, v in ipairs(list) do
-        if type(pred) == "function" then
+    if type(pred) == "function" then
+        for i, v in ipairs(list) do
             if pred(v) then
                 return v, i
             end
-        elseif v == pred then
-            return v, i
+        end
+    else
+        for i, v in ipairs(list) do
+            if v == pred then
+                return v, i
+            end
         end
     end
 end
 
 function table.filter(list, pred)
-    local result = {}
+    local filtered = {}
     for i, v in ipairs(list) do
         if pred(v) then
-            table.insert(result, v)
+            table.insert(filtered, v)
         end
     end
-    return result
+    return filtered
 end
 
 function table.iterate(list, comp)
-    local value
+    local iterated
     for i, v in ipairs(list) do
-        if value == nil or comp(v, value) then
-            value = v
+        if iterated == nil or comp(v, iterated) then
+            iterated = v
         end
     end
-    return value
+    return iterated
 end
 
-function table.copy(t)
-    local result = {}
+function table.duplicate(t)
+    local duplicated = {}
     for k, v in pairs(t) do
-        result[k] = v
+        duplicated[k] = v
     end
-    return result
+    return duplicated
 end
 
 function math.round(x)
@@ -367,12 +449,13 @@ function lerp_clamped(from, to, weight)
     return lerp(from, to, clamp(weight, 0, 1))
 end
 
+local tau = math.pi * 2
 function lerp_angle(from, to, weight)
-    local diff = (to - from + math.pi) % (2 * math.pi) - math.pi
-    return from + diff * weight
+    local difference = (to - from + math.pi) % tau - math.pi
+    return from + difference * weight
 end
 
-function lerp_angle_vec(x1, y1, x2, y2, weight)
+function lerp_angle_vector(x1, y1, x2, y2, weight)
     local angle1 = math.atan2(y1, x1)
     local angle2 = math.atan2(y2, x2)
     local lerped_angle = lerp_angle(angle1, angle2, weight)
@@ -383,7 +466,7 @@ function lerp_angle_vec(x1, y1, x2, y2, weight)
 end
 
 function warp(value, from, to)
-    return (value - from) % (to - from) + from
+    return value % (to - from) + from
 end
 
 function point_in_rectangle(x, y, left, up, right, down)
@@ -392,7 +475,12 @@ end
 
 --#endregion
 
-local null = setmetatable({}, {__index = function(t, k) if type(k) == "string" and k:find("_$") then return t end end, __newindex = function() end})
+local null = setmetatable({}, {
+    __index = function(t, k)
+        if type(k) == "string" and k:find("_$") then return t end
+    end,
+    __newindex = function() end,
+})
 local function __index(t, k)
     local conditional = false
     if k:find("_$") then
@@ -403,9 +491,7 @@ local function __index(t, k)
     assert(field ~= nil or k == "id", "field does not exist: " .. k)
     if type(field) == "table" then
         local v = field:get(t, k)
-        if v == nil and conditional then
-            return null
-        end
+        if v == nil and conditional then return null end
         return v
     end
     return field
@@ -418,7 +504,7 @@ end
 ---@class Entity
 ---@field id integer
 ---@type table|fun(fields: table): fun(entity_id: integer): Entity
-Entity = setmetatable({
+EntityClass = setmetatable({
     __call = function(t, entity_id)
         return setmetatable({id = validate(entity_id)}, t)
     end,
@@ -443,14 +529,14 @@ local vector_metatable = {
         ComponentSetValue2(self.id, self.field, unpack(values))
     end,
 }
-local getters = {_tags = ComponentGetTags, _enabled = ComponentGetIsEnabled, _entity = ComponentGetEntity, _members = ComponentGetMembers, _typename = ComponentGetTypeName}
-local setters = {_tags = set_component_tags, _enabled = set_component_enabled}
+local attribute_getters = {_tags = ComponentGetTags, _enabled = ComponentGetIsEnabled, _entity = ComponentGetEntity, _members = ComponentGetMembers, _typename = ComponentGetTypeName}
+local attribute_setters = {_tags = set_component_tags, _enabled = set_component_enabled}
 local component_metatable = {
     __index = function(self, k)
         if k:find("_$") then
             k = k:sub(1, -2)
         end
-        local f = getters[k]
+        local f = attribute_getters[k]
         if f ~= nil then
             return f(self._id)
         end
@@ -461,7 +547,7 @@ local component_metatable = {
         return v[1]
     end,
     __newindex = function(self, k, v)
-        local f = setters[k]
+        local f = attribute_setters[k]
         if f ~= nil then
             f(self._id, v)
             return
@@ -479,6 +565,16 @@ local component_metatable = {
         end
     end,
 }
+local field_class_metatable = {
+    __call = function(t, ...)
+        return setmetatable(t[1](...), t)
+    end,
+}
+local function FieldClass(f)
+    local t = {f}
+    t.__index = t
+    return setmetatable(t, field_class_metatable)
+end
 local function EntityGetFirstComponentWithValue(entity_id, table_of_component_values, ...)
     local f = EntityGetFirstComponentIncludingDisabled
     local t = {...}
@@ -495,30 +591,28 @@ local function EntityGetFirstComponentWithValue(entity_id, table_of_component_va
 end
 ---@class ComponentField
 ---@type table|fun(component_type_name: string|table, tag: string|function?, ...): ComponentField
-ComponentField = setmetatable({}, {
-    __call = function(t, ...)
-        local field = {EntityGetFirstComponentIncludingDisabled, ...}
-        local v = select(-1, ...)
-        local s = type(v)
-        if s == "table" then
-            local table_of_component_values
-            for k, v in pairs(v) do
-                if type(k) == "string" then
-                    if table_of_component_values == nil then
-                        table_of_component_values = {}
-                    end
-                    table_of_component_values[k] = v
+ComponentField = FieldClass(function(...)
+    local field = {EntityGetFirstComponentIncludingDisabled, ...}
+    local v = select(-1, ...)
+    local s = type(v)
+    if s == "table" then
+        local table_of_component_values
+        for key, value in pairs(v) do
+            if type(key) == "string" then
+                if table_of_component_values == nil then
+                    table_of_component_values = {}
                 end
+                table_of_component_values[key] = value
             end
-            field = {EntityGetFirstComponentWithValue, table_of_component_values, unpack(v)}
-        elseif s == "function" then
-            field[1] = v
-            field[#field] = nil
         end
-        return setmetatable(field, t)
-    end,
-})
-ComponentField.__index = ComponentField
+        field = {EntityGetFirstComponentWithValue, table_of_component_values, unpack(v)}
+    elseif s == "function" then
+        field[1] = v
+        field[#field] = nil
+    end
+    return field
+end)
+
 function ComponentField:get(entity, k)
     local id = self[1](entity.id, unpack(self, 2))
     if id ~= nil then
@@ -530,12 +624,10 @@ end
 
 ---@class VariableField
 ---@type table|fun(tag: string, field: "value_string"|"value_int"|"value_bool"|"value_float", default?: string|integer|boolean|number): VariableField
-VariableField = setmetatable({}, {
-    __call = function(t, tag, field, default)
-        return setmetatable({tag = tag, field = field, default = default}, t)
-    end,
-})
-VariableField.__index = VariableField
+VariableField = FieldClass(function(tag, field, default)
+    return {tag = tag, field = field, default = default}
+end)
+
 function VariableField:get(entity, k)
     local variable = EntityGetFirstComponentIncludingDisabled(entity.id, "VariableStorageComponent", self.tag)
     if variable ~= nil then
@@ -561,77 +653,56 @@ function VariableField:set(entity, k, v)
     end
 end
 
-local file_field = {}
-file_field.__index = file_field
-function file_field:get()
-    return ModTextFileGetContent(self[1])
-end
-
-function file_field:set(entity, k, v)
-    ModTextFileSetContent(self[1], tostring(v))
-end
-
-function FileField(filename, default)
+FileField = FieldClass(function(f, default)
+    local filename = ("%s/%s.txt"):format(tactic_filename, jit.util.funcinfo(f).currentline)
     if default ~= nil then
         ModTextFileSetContent(filename, default)
     end
-    return setmetatable({filename}, file_field)
+    return {filename}
+end)
+
+function FileField:get()
+    return ModTextFileGetContent(self[1])
 end
 
-local combined_field = {}
-combined_field.__index = combined_field
-function combined_field:get(entity, k)
-    return self[2](self[1]:get(entity, k))
+function FileField:set(entity, k, v)
+    ModTextFileSetContent(self[1], v)
 end
 
-function combined_field:set(entity, k, v)
-    self[1]:set(entity, k, v)
-end
+NumericField = FieldClass(function(field)
+    return {field}
+end)
 
-function CombinedField(field, f)
-    return setmetatable({field, f}, combined_field)
-end
-
-local numeric_field = {}
-numeric_field.__index = numeric_field
-function numeric_field:get(entity, k)
+function NumericField:get(entity, k)
     return tonumber(self[1]:get(entity, k))
 end
 
-function numeric_field:set(entity, k, v)
-    self[1]:set(entity, k, v)
+function NumericField:set(entity, k, v)
+    self[1]:set(entity, k, ("%.16a"):format(v))
 end
 
-function NumericField(field)
-    return setmetatable({field}, numeric_field)
-end
+SerializedField = FieldClass(function(field, safe)
+    return {field, safe}
+end)
 
-local serialized_field = {}
-serialized_field.__index = serialized_field
-function serialized_field:get(entity, k)
+function SerializedField:get(entity, k)
     return deserialize(self[1]:get(entity, k))
 end
 
-function serialized_field:set(entity, k, v)
-    self[1]:set(entity, k, serialize(v))
+function SerializedField:set(entity, k, v)
+    self[1]:set(entity, k, (self[2] and serialize_safe or serialize)(v))
 end
 
-function SerializedField(field)
-    return setmetatable({field}, serialized_field)
-end
-
-local object_metatable = {
-    __call = function(t, getters)
-        return setmetatable(t, {
-            __index = function(t, k)
-                local getter = getters[k]
-                if getter ~= nil then
-                    return getter(t, k)
-                end
-            end,
-        })
+local index_table_metatable = {
+    __call = function(t, indexes)
+        t[1] = indexes
+        return t
+    end,
+    __index = function(t, k)
+        local index = t[1][k]
+        if index ~= nil then return index(t, k) end
     end,
 }
-function Object(t)
-    return setmetatable(t, object_metatable)
+function IndexTable(t)
+    return setmetatable(t, index_table_metatable)
 end

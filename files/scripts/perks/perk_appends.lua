@@ -1,7 +1,7 @@
 dofile_once("mods/iota_multiplayer/files/scripts/lib/environment.lua")
 dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
 
-local PerkStats = Entity{
+local PerkStats = EntityClass{
     spawn_count = VariableField("iota_multiplayer.spawn_count", "value_int"),
 }
 local raw_perk_pickup = perk_pickup
