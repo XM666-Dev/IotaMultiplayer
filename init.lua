@@ -39,6 +39,14 @@ if ModSettingGet("iota_multiplayer.camera_zoom_max") ~= 1 then
         :gsub("gl_MultiTexCoord0", "gl_MultiTexCoord0 * camera_zoom - camera_zoom * 0.5 + 0.5")
         :gsub("gl_MultiTexCoord1", "gl_MultiTexCoord1 * camera_zoom - camera_zoom * 0.5 + 0.5")
     )
+    for i, filename in ipairs{"data/shaders/sprite_cellgrid_preprocessed.frag", "data/shaders/sprite_default.frag"} do
+        ModTextFileSetContent(filename, ModTextFileGetContent(filename):gsub("#define PIXEL_ART_FILTER", ""))
+    end
+    ModTextFileSetContent("data/shaders/sprite_cellgrid.frag", ModTextFileGetContent("data/shaders/sprite_cellgrid.frag")
+        :gsub("uv *= tex_size_pixels;", "")
+        :gsub("uv = floor(uv) + x;", "")
+        :gsub("result /= vec4(tex_size_pixels,tex_size_pixels);", "")
+    )
 end
 ModMagicNumbersFileAdd("mods/iota_multiplayer/files/magic_numbers.xml")
 ModTextFileSetContent("mods/iota_multiplayer/files/magic_numbers.xml", tostring(nxml.new_element("MagicNumbers", magic_numbers_mod)))

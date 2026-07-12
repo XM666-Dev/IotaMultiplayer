@@ -1,4 +1,7 @@
-﻿beta-1.0.5-20260705
+﻿beta-1.0.6-20260712
+-fix image flickering when use dynamic camera zoom
+
+beta-1.0.5-20260705
 -optimize code
 -improve gui performance
 -improve pickup hint behaviour
