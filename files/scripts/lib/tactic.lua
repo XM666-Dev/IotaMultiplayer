@@ -202,7 +202,6 @@ end)
 
 function Window:begin(depth)
     GuiStartFrame(self.gui)
-    GuiZSet(self.gui, depth)
     return DrawList(self, depth)
 end
 
