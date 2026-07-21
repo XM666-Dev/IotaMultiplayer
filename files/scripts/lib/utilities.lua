@@ -248,7 +248,7 @@ local function get_cape_color()
     player:expand_base()
     local cape
     for entity in player:each_of("Entity") do
-        if entity.attr.name == "Cape" then
+        if entity.attr.name == "cape" then
             cape = entity
             break
         end
