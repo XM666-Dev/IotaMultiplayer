@@ -1,3 +1,4 @@
+local nxml = dofile_once("mods/iota_multiplayer/files/scripts/lib/nxml.lua")
 dofile_once("mods/iota_multiplayer/files/scripts/lib/tactic.lua")
 dofile_once("mods/mnee/lib.lua")
 
@@ -8,6 +9,7 @@ mod = EntityClass{
     camera_center_index = VariableField("iota_multiplayer.camera_center_index", "value_int"),
     money = VariableField("iota_multiplayer.money", "value_int"),
     auto_teleport = VariableField("iota_multiplayer.auto_teleport", "value_bool", true),
+    player_num_target = NumericField(FileField(function() end, -1)),
 } (1)
 
 Player = EntityClass{
@@ -24,6 +26,7 @@ Player = EntityClass{
     alive = ComponentField("StreamingKeepAliveComponent", EntityGetFirstComponent),
     log = ComponentField("GameLogComponent"),
     sprite = ComponentField("SpriteComponent", "character"),
+    sprite_lukki = ComponentField("SpriteComponent", "lukki_enable", EntityGetFirstComponentIncludingDisabled),
     aiming_reticle = ComponentField("SpriteComponent", "aiming_reticle"),
     character_data = ComponentField("CharacterDataComponent"),
     collision = ComponentField("PlayerCollisionComponent"),
@@ -53,6 +56,12 @@ end
 
 function Player:get_arm_r()
     return get_children(self.id, "player_arm_r")[1]
+end
+
+function Player:get_cape()
+    return table.find(get_children(self.id), function(v)
+        return EntityGetName(v) == "cape"
+    end)
 end
 
 function Player:is_inventory_open()
@@ -207,6 +216,81 @@ end
 function Player:is_gui_controlled()
     if mod.gui_control_index ~= 0 then return self.index == mod.gui_control_index end
     return self.gui ~= nil and ComponentGetIsEnabled(self.gui._id)
+end
+
+function Player:get_color()
+    return self.sprite_.image_file and tonumber(self.sprite.image_file:match("^mods/iota_multiplayer/files/recolored/.*/(%d+)/%d+%.xml$")) or 0xffffff
+end
+
+local ModTextFileSetContent = ModTextFileSetContent
+local function set_sprite_color(sprite, color)
+    if sprite == nil then return end
+
+    local image_file = ComponentGetValue2(sprite, "image_file")
+    local raw_filename, index = image_file:match("^mods/iota_multiplayer/files/recolored/(.*)/%d+/(%d+)%.xml$")
+    raw_filename = raw_filename or image_file
+    index = index or 0
+
+    local filename = ("mods/iota_multiplayer/files/recolored/%s/%.f/%.f.xml"):format(raw_filename, color, index + 1)
+    local element = nxml.parse_file(raw_filename)
+    element.attr.color_r, element.attr.color_g, element.attr.color_b = extract_rgb(color)
+    ModTextFileSetContent(filename, tostring(element))
+    ComponentSetValue2(sprite, "image_file", filename)
+end
+local cape_color_uninitialized = true
+local cape_color, cape_edge_color
+local defaults = {
+    cloth_color = 0xff7f5476,
+    cloth_color_edge = 0xff9b6f9a,
+}
+local function get_cape_color()
+    local player = nxml.parse_file("data/entities/player.xml")
+    player:expand_base()
+    local cape
+    for entity in player:each_of("Entity") do
+        if entity.attr.name == "Cape" then
+            cape = entity
+            break
+        end
+    end
+    if cape == nil then return defaults.cloth_color, defaults.cloth_color_edge end
+
+    local physics = cape:first_of("VerletPhysicsComponent")
+    physics:apply_defaults(defaults)
+    return tonumber(physics.attr.cloth_color) or tonumber("0x" .. physics.attr.cloth_color),
+        tonumber(physics.attr.cloth_color_edge) or tonumber("0x" .. physics.attr.cloth_color_edge)
+end
+function Player:set_color(color)
+    set_sprite_color(self.sprite_._id, color)
+    set_sprite_color(self.sprite_lukki_._id, color)
+
+    local arm_r = self:get_arm_r()
+    set_sprite_color(EntityGetFirstComponent(arm_r, "SpriteComponent"), color)
+
+    local cape = self:get_cape()
+    local physics = EntityGetFirstComponent(cape, "VerletPhysicsComponent")
+    if physics ~= nil then
+        if cape_color_uninitialized then
+            cape_color_uninitialized = false
+            cape_color, cape_edge_color = get_cape_color()
+        end
+
+        local r, g, b = extract_rgb(color)
+        if cape_color ~= nil then
+            local cape_r, cape_g, cape_b, cape_a = extract_abgr(cape_color)
+            cape_r = cape_r * r
+            cape_g = cape_g * g
+            cape_b = cape_b * b
+            ComponentSetValue2(physics, "cloth_color", compose_abgr(cape_r, cape_g, cape_b, cape_a))
+        end
+        if cape_edge_color ~= nil then
+            local cape_edge_r, cape_edge_g, cape_edge_b, cape_edge_a = extract_abgr(cape_edge_color)
+            cape_edge_r = cape_edge_r * r
+            cape_edge_g = cape_edge_g * g
+            cape_edge_b = cape_edge_b * b
+            ComponentSetValue2(physics, "cloth_color_edge", compose_abgr(cape_edge_r, cape_edge_g, cape_edge_b, cape_edge_a))
+        end
+    end
 end
 
 function load_player(x, y)

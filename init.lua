@@ -136,6 +136,41 @@ function OnPlayerSpawned(player)
     EntityAddComponent2(updator, "LuaComponent", {script_electricity_receiver_electrified = "mods/iota_multiplayer/files/scripts/magic/camera_update_pre.lua"})
     EntityAddComponent2(updator, "LuaComponent", {script_source_file = "mods/iota_multiplayer/files/scripts/magic/camera_update_post.lua"})
     receiver = EntityAddComponent2(updator, "ElectricityReceiverComponent", {electrified_msg_interval_frames = 1})
+
+    local players = get_players_including_disabled()
+    for i, initialized_player in ipairs(players) do
+        local initialized_player_object = Player(initialized_player)
+        initialized_player_object:set_color(initialized_player_object:get_color())
+    end
+end
+
+local function update_players()
+    local value = mod.player_num_target
+    if value == -1 then return end
+    mod.player_num_target = -1
+
+    local players = get_players_including_disabled()
+    local previous_value = #players
+    if value > previous_value then
+        local camera_centered_player = table.find(players, function(player)
+            local player_object = Player(player)
+            return player_object.index == mod.camera_center_index
+        end)
+        local x, y = EntityGetTransform(camera_centered_player)
+        for i = previous_value + 1, value do
+            local new_player = EntityLoad("data/entities/player.xml", x, y)
+            local new_player_object = Player(new_player)
+            new_player_object:add()
+            new_player_object.index = i
+        end
+    elseif value < previous_value then
+        for i, player in ipairs(players) do
+            local player_object = Player(player)
+            if player_object.index > value then
+                EntityKill(player)
+            end
+        end
+    end
 end
 
 local function add_script_throw(item)
@@ -1060,6 +1095,7 @@ local function update_window()
 end
 
 function OnWorldPreUpdate()
+    update_players()
     update_common()
     update_camera()
     update_controls()

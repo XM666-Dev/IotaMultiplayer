@@ -165,6 +165,16 @@ iota_multiplayer.setting_camera_zoom_min,Min zoom,,,,,,,,最小缩放,,,
 iota_multiplayer.settingdesc_camera_zoom_min,Camera minimum zoom multiplier.,,,,,,,,摄像机的最小缩放倍数。,,,
 iota_multiplayer.setting_camera_zoom_max,Max zoom,,,,,,,,最大缩放,,,
 iota_multiplayer.settingdesc_camera_zoom_max,Camera maximum zoom multiplier.,,,,,,,,摄像机的最大缩放倍数。,,,
+iota_multiplayer.setting_camera_centered_only,Camera centered only,,,,,,,,摄像机始终居中,,,
+iota_multiplayer.settingdesc_camera_centered_only,Does camera only center at the current player?,,,,,,,,摄像机是否仅居中于当前玩家？,,,
+iota_multiplayer.setting_player,Player,,,,,,,,玩家,,,
+iota_multiplayer.settingdesc_player,About player settings,,,,,,,,玩家设置相关,,,
+iota_multiplayer.setting_player_num,Num,,,,,,,,数量,,,
+iota_multiplayer.settingdesc_player_num,The number of players in the current world.,,,,,,,,当前世界中的玩家数量。,,,
+iota_multiplayer.setting_player_color,Player %s color,,,,,,,,玩家%s颜色,,,
+iota_multiplayer.settingdesc_player_color,The color used by player %s.,,,,,,,,玩家%s所使用的颜色。,,,
+iota_multiplayer.setting_player_autoaim,Player %s autoaim,,,,,,,,玩家%s自动瞄准,,,
+iota_multiplayer.settingdesc_player_autoaim,Whether to use autoaim for player %s?,,,,,,,,是否为玩家%s使用自动瞄准？,,,
 iota_multiplayer.itempickup_use,Press $0 to use '$1',,,,,,,,按 $0 使用“$1”,,,
 iota_multiplayer.item_resurrect,Resurrect,,,,,,,,复活,,,
 iota_multiplayer.item_corpse,Corpse,,,,,,,,尸体,,,
@@ -187,6 +197,54 @@ end
 local function get_text(key)
     local text = translations.get(key, get_language())
     return text ~= "" and text or translations.get(key, "en")
+end
+local function mod_setting_text_integer(mod_id, gui, in_main_menu, im_id, setting)
+    local value = ModSettingGetNextValue(mod_setting_get_id(mod_id, setting))
+
+    GuiLayoutBeginHorizontal(gui, 0, 0)
+    GuiText(gui, mod_setting_group_x_offset, 0, setting.ui_name)
+    local value_new = GuiTextInput(gui, im_id, 0, 0, setting.text or value, 100, setting.text_max_length or 25, setting.allowed_characters or "")
+    local clicked, right_clicked, hovered = GuiGetPreviousWidgetInfo(gui)
+    if right_clicked then
+        value_new = setting.value_default
+    end
+    if hovered then
+        setting.text = value_new
+    else
+        setting.text = nil
+    end
+    value_new = tonumber(value_new) or value
+    GuiLayoutEnd(gui)
+    if value ~= value_new then
+        ModSettingSetNextValue(mod_setting_get_id(mod_id, setting), math.floor(value_new + 0.5), false)
+        mod_setting_handle_change_callback(mod_id, gui, in_main_menu, setting, value, value_new)
+    end
+
+    mod_setting_tooltip(mod_id, gui, in_main_menu, setting)
+end
+local function mod_setting_text_color(mod_id, gui, in_main_menu, im_id, setting)
+    local value = ModSettingGetNextValue(mod_setting_get_id(mod_id, setting))
+
+    GuiLayoutBeginHorizontal(gui, 0, 0)
+    GuiText(gui, mod_setting_group_x_offset, 0, setting.ui_name)
+    local value_new = GuiTextInput(gui, im_id, 0, 0, setting.text or ("%x"):format(value), 100, setting.text_max_length or 25, setting.allowed_characters or "")
+    local clicked, right_clicked, hovered = GuiGetPreviousWidgetInfo(gui)
+    if right_clicked then
+        value_new = ("%x"):format(setting.value_default)
+    end
+    if hovered then
+        setting.text = value_new
+    else
+        setting.text = nil
+    end
+    value_new = tonumber("0x" .. value_new) or value
+    GuiLayoutEnd(gui)
+    if value ~= value_new then
+        ModSettingSetNextValue(mod_setting_get_id(mod_id, setting), value_new, false)
+        mod_setting_handle_change_callback(mod_id, gui, in_main_menu, setting, value, value_new)
+    end
+
+    mod_setting_tooltip(mod_id, gui, in_main_menu, setting)
 end
 
 local mod_id = "iota_multiplayer"
@@ -311,8 +369,8 @@ mod_settings = {
                 value_default = false,
                 scope = MOD_SETTING_SCOPE_RUNTIME,
             }{
-                    ui_name = function() return "Camera centered only" end,
-                    ui_description = function() return "Only centers camera for one player." end,
+                    ui_name = function() return get_text("iota_multiplayer.setting_camera_centered_only") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_centered_only") end,
                 },
         },
     }{
@@ -320,15 +378,134 @@ mod_settings = {
             ui_description = function() return get_text("iota_multiplayer.settingdesc_camera") end,
         },
     IndexTable{
-        id = "gui_disabled",
-        value_default = false,
-        scope = MOD_SETTING_SCOPE_RUNTIME,
+        category_id = "player",
+        settings = {
+            IndexTable{
+                id = "player_num",
+                allowed_characters = NUMERIC_CHARACTERS,
+                scope = nil,
+                ui_fn = function(...)
+                    local raw_mod_setting_get_next_value = ModSettingGetNextValue
+                    local raw_mod_setting_set_next_value = ModSettingSetNextValue
 
+                    if GameGetWorldStateEntity() == 0 then
+                        ModSettingGetNextValue = function() return 0 end
+                        ModSettingSetNextValue = function() end
+                    else
+                        dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
+                        ModSettingGetNextValue = function()
+                            if mod.player_num_target == -1 then return #get_players_including_disabled() end
+
+                            return mod.player_num_target
+                        end
+                        ModSettingSetNextValue = function(id, value)
+                            mod.player_num_target = value
+                        end
+                    end
+
+                    mod_setting_text_integer(...)
+                    ModSettingGetNextValue = raw_mod_setting_get_next_value
+                    ModSettingSetNextValue = raw_mod_setting_set_next_value
+                end,
+            }{
+                    ui_name = function() return get_text("iota_multiplayer.setting_player_num") end,
+                    ui_description = function() return get_text("iota_multiplayer.settingdesc_player_num") end,
+                },
+        },
     }{
-            ui_name = function() return "Gui disabled" end,
-            ui_description = function() return "Disables all player guis." end,
+            ui_name = function() return get_text("iota_multiplayer.setting_player") end,
+            ui_description = function() return get_text("iota_multiplayer.settingdesc_player") end,
         },
 }
+
+function table.find(list, pred)
+    if type(pred) == "function" then
+        for i, v in ipairs(list) do
+            if pred(v) then
+                return v, i
+            end
+        end
+    else
+        for i, v in ipairs(list) do
+            if v == pred then
+                return v, i
+            end
+        end
+    end
+end
+
+local player_category = table.find(mod_settings, function(t)
+    return t.category_id == "player"
+end)
+for i = 1, 8 do
+    table.insert(player_category.settings,
+        IndexTable{
+            id = "player_color",
+            value_default = 0xffffff,
+            scope = nil,
+            ui_fn = function(...)
+                local raw_mod_setting_get_next_value = ModSettingGetNextValue
+                local raw_mod_setting_set_next_value = ModSettingSetNextValue
+
+                if GameGetWorldStateEntity() == 0 then
+                    ModSettingGetNextValue = function() return 0xffffff end
+                    ModSettingSetNextValue = function() end
+                else
+                    dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
+                    ModSettingGetNextValue = function()
+                        local player = get_player_at_index_including_disabled(i)
+                        local player_object = Player(player)
+                        return player_object:get_color()
+                    end
+                    ModSettingSetNextValue = function(id, value)
+                        local player = get_player_at_index_including_disabled(i)
+                        local player_object = Player(player)
+                        player_object:set_color(value)
+                    end
+                end
+
+                mod_setting_text_color(...)
+                ModSettingGetNextValue = raw_mod_setting_get_next_value
+                ModSettingSetNextValue = raw_mod_setting_set_next_value
+            end,
+        }{
+            ui_name = function() return get_text("iota_multiplayer.setting_player_color"):format(i) end,
+            ui_description = function() return get_text("iota_multiplayer.settingdesc_player_color"):format(i) end,
+        })
+    table.insert(player_category.settings,
+        IndexTable{
+            id = "player_autoaim",
+            scope = nil,
+            ui_fn = function(...)
+                local raw_mod_setting_get_next_value = ModSettingGetNextValue
+                local raw_mod_setting_set_next_value = ModSettingSetNextValue
+
+                if GameGetWorldStateEntity() == 0 then
+                    ModSettingGetNextValue = function() return false end
+                    ModSettingSetNextValue = function() end
+                else
+                    dofile_once("mods/iota_multiplayer/files/scripts/lib/utilities.lua")
+                    ModSettingGetNextValue = function()
+                        local player = get_player_at_index_including_disabled(i)
+                        local player_object = Player(player)
+                        return player_object.autoaim_._enabled
+                    end
+                    ModSettingSetNextValue = function(id, value)
+                        local player = get_player_at_index_including_disabled(i)
+                        local player_object = Player(player)
+                        player_object.autoaim_._enabled = value
+                    end
+                end
+
+                mod_setting_bool(...)
+                ModSettingGetNextValue = raw_mod_setting_get_next_value
+                ModSettingSetNextValue = raw_mod_setting_set_next_value
+            end,
+        }{
+            ui_name = function() return get_text("iota_multiplayer.setting_player_autoaim"):format(i) end,
+            ui_description = function() return get_text("iota_multiplayer.settingdesc_player_autoaim"):format(i) end,
+        })
+end
 
 function ModSettingsUpdate(init_scope)
     mod_settings_update(mod_id, mod_settings, init_scope)

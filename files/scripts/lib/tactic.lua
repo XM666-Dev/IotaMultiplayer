@@ -486,6 +486,52 @@ function point_in_rectangle(x, y, left, up, right, down)
     return x >= left and x <= right and y >= up and y <= down
 end
 
+function extract_rgba(color)
+    return bit.band(bit.rshift(color, 24), 255) / 255,
+        bit.band(bit.rshift(color, 16), 255) / 255,
+        bit.band(bit.rshift(color, 8), 255) / 255,
+        bit.band(color, 255) / 255
+end
+
+function extract_abgr(color)
+    return bit.band(color, 255) / 255,
+        bit.band(bit.rshift(color, 8), 255) / 255,
+        bit.band(bit.rshift(color, 16), 255) / 255,
+        bit.band(bit.rshift(color, 24), 255) / 255
+end
+
+function extract_rgb(color)
+    return bit.band(bit.rshift(color, 16), 255) / 255,
+        bit.band(bit.rshift(color, 8), 255) / 255,
+        bit.band(color, 255) / 255
+end
+
+function compose_rgba(r, g, b, a)
+    return bit.bor(
+        bit.lshift(r * 255, 24),
+        bit.lshift(g * 255, 16),
+        bit.lshift(b * 255, 8),
+        a * 255
+    )
+end
+
+function compose_abgr(r, g, b, a)
+    return bit.bor(
+        bit.lshift(a * 255, 24),
+        bit.lshift(b * 255, 16),
+        bit.lshift(g * 255, 8),
+        r * 255
+    )
+end
+
+function compose_rgb(r, g, b)
+    return bit.bor(
+        bit.lshift(r * 255, 16),
+        bit.lshift(g * 255, 8),
+        b * 255
+    )
+end
+
 --#endregion
 
 local null = setmetatable({}, {
@@ -587,9 +633,8 @@ local function EntityGetFirstComponentWithValue(entity_id, table_of_component_va
         t[#t] = nil
     end
     local component = f(entity_id, unpack(t))
-    if component ~= nil then
-        return component
-    end
+    if component ~= nil then return component end
+    if entity_id == nil then return nil end
     return EntityAddComponent2(entity_id, ..., table_of_component_values)
 end
 ---@class ComponentField
