@@ -1,4 +1,7 @@
-﻿beta-1.1.0-20260721
+﻿beta-1.1.1-20260722
+-fix translations
+
+beta-1.1.0-20260721
 -add player num setting
 -add player color setting
 -add player autoaim setting
