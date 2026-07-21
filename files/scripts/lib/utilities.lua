@@ -39,6 +39,7 @@ Player = EntityClass{
     damage_responsible = VariableField("iota_multiplayer.damage_responsible", "value_string"),
     load_frame = VariableField("iota_multiplayer.load_frame", "value_int"),
     ingestion_data = SerializedField(VariableField("iota_multiplayer.ingestion_data", "value_string"), true),
+    cape_color_modified = VariableField("iota_multiplayer.cape_color_modified", "value_bool"),
 }
 function Player:add()
     if EntityHasTag(self.id, "iota_multiplayer.player") then
@@ -237,29 +238,8 @@ local function set_sprite_color(sprite, color)
     ModTextFileSetContent(filename, tostring(element))
     ComponentSetValue2(sprite, "image_file", filename)
 end
-local cape_color_uninitialized = true
-local cape_color, cape_edge_color
-local defaults = {
-    cloth_color = 0xff7f5476,
-    cloth_color_edge = 0xff9b6f9a,
-}
-local function get_cape_color()
-    local player = nxml.parse_file("data/entities/player.xml")
-    player:expand_base()
-    local cape
-    for entity in player:each_of("Entity") do
-        if entity.attr.name == "cape" then
-            cape = entity
-            break
-        end
-    end
-    if cape == nil then return defaults.cloth_color, defaults.cloth_color_edge end
-
-    local physics = cape:first_of("VerletPhysicsComponent")
-    physics:apply_defaults(defaults)
-    return tonumber(physics.attr.cloth_color) or tonumber("0x" .. physics.attr.cloth_color),
-        tonumber(physics.attr.cloth_color_edge) or tonumber("0x" .. physics.attr.cloth_color_edge)
-end
+local default_cape_color = -8432522
+local default_cape_edge_color = -6590566
 function Player:set_color(color)
     set_sprite_color(self.sprite_._id, color)
     set_sprite_color(self.sprite_lukki_._id, color)
@@ -270,25 +250,21 @@ function Player:set_color(color)
     local cape = self:get_cape()
     local physics = EntityGetFirstComponent(cape, "VerletPhysicsComponent")
     if physics ~= nil then
-        if cape_color_uninitialized then
-            cape_color_uninitialized = false
-            cape_color, cape_edge_color = get_cape_color()
-        end
-
-        local r, g, b = extract_rgb(color)
-        if cape_color ~= nil then
-            local cape_r, cape_g, cape_b, cape_a = extract_abgr(cape_color)
+        local cape_color = ComponentGetValue2(physics, "cloth_color")
+        local cape_edge_color = ComponentGetValue2(physics, "cloth_color_edge")
+        if cape_color == default_cape_color and cape_edge_color == default_cape_edge_color or self.cape_color_modified then
+            local cape_r, cape_g, cape_b, cape_a = extract_abgr(default_cape_color)
+            local cape_edge_r, cape_edge_g, cape_edge_b, cape_edge_a = extract_abgr(default_cape_edge_color)
+            local r, g, b = extract_rgb(color)
             cape_r = cape_r * r
             cape_g = cape_g * g
             cape_b = cape_b * b
-            ComponentSetValue2(physics, "cloth_color", compose_abgr(cape_r, cape_g, cape_b, cape_a))
-        end
-        if cape_edge_color ~= nil then
-            local cape_edge_r, cape_edge_g, cape_edge_b, cape_edge_a = extract_abgr(cape_edge_color)
             cape_edge_r = cape_edge_r * r
             cape_edge_g = cape_edge_g * g
             cape_edge_b = cape_edge_b * b
+            ComponentSetValue2(physics, "cloth_color", compose_abgr(cape_r, cape_g, cape_b, cape_a))
             ComponentSetValue2(physics, "cloth_color_edge", compose_abgr(cape_edge_r, cape_edge_g, cape_edge_b, cape_edge_a))
+            self.cape_color_modified = true
         end
     end
 end
