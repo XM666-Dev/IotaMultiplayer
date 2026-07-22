@@ -1,4 +1,7 @@
-﻿beta-1.1.1-20260722
+﻿beta-1.1.2-20260722
+-optimize player recolor feature
+
+beta-1.1.1-20260722
 -fix translations
 
 beta-1.1.0-20260721

@@ -232,6 +232,11 @@ local function set_sprite_color(sprite, color)
     raw_filename = raw_filename or image_file
     index = index or 0
 
+    if color == 0xffffff then
+        ComponentSetValue2(sprite, "image_file", raw_filename)
+        return
+    end
+
     local filename = ("mods/iota_multiplayer/files/recolored/%s/%.f/%.f.xml"):format(raw_filename, color, index + 1)
     local element = nxml.parse_file(raw_filename)
     element.attr.color_r, element.attr.color_g, element.attr.color_b = extract_rgb(color)
