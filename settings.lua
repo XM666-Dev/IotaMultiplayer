@@ -382,6 +382,7 @@ mod_settings = {
         settings = {
             IndexTable{
                 id = "player_num",
+                value_default = 1,
                 allowed_characters = NUMERIC_CHARACTERS,
                 scope = nil,
                 ui_fn = function(...)
@@ -475,6 +476,7 @@ for i = 1, 8 do
     table.insert(player_category.settings,
         IndexTable{
             id = "player_autoaim",
+            value_default = false,
             scope = nil,
             ui_fn = function(...)
                 local raw_mod_setting_get_next_value = ModSettingGetNextValue

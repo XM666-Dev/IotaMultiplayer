@@ -1,4 +1,7 @@
-﻿beta-1.1.2-20260722
+﻿beta-1.1.3-20260723
+-fix player recolor feature may break the sprite
+
+beta-1.1.2-20260722
 -optimize player recolor feature
 
 beta-1.1.1-20260722
