@@ -10,7 +10,7 @@ mod = EntityClass{
     money = VariableField("iota_multiplayer.money", "value_int"),
     auto_teleport = VariableField("iota_multiplayer.auto_teleport", "value_bool", true),
     player_num_target = NumericField(FileField(function() end, -1)),
-    recolored_index = NumericField(FileField(function() end, 0)),
+    recolored_index = VariableField("iota_multiplayer.recolored_index", "value_int"),
 } (1)
 
 Player = EntityClass{
