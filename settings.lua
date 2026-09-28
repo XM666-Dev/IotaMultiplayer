@@ -342,7 +342,7 @@ mod_settings = {
             IndexTable{
                 id = "camera_zoom_min",
                 value_default = 1,
-                value_min = 0.5,
+                value_min = 1,
                 value_display_multiplier = 100,
                 value_display_formatting = " $0 %",
                 scope = MOD_SETTING_SCOPE_RUNTIME,
@@ -354,7 +354,7 @@ mod_settings = {
             IndexTable{
                 id = "camera_zoom_max",
                 value_default = 1,
-                value_min = 0.5,
+                value_min = 1,
                 value_max = 2,
                 value_display_multiplier = 100,
                 value_display_formatting = " $0 %",
@@ -377,7 +377,7 @@ mod_settings = {
             IndexTable{
                 id = "camera_disable_filter",
                 value_default = true,
-                scope = MOD_SETTING_SCOPE_RESTART,
+                scope = MOD_SETTING_SCOPE_RUNTIME_RESTART,
             }{
                     ui_name = function() return get_text("iota_multiplayer.setting_camera_disable_filter") end,
                     ui_description = function() return get_text("iota_multiplayer.settingdesc_camera_disable_filter") end,
